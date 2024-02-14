@@ -1,0 +1,71 @@
+{
+    "describedBy": "https://raw.githubusercontent.com/AllenNeuralDynamics/aind-data-schema/main/src/aind_data_schema/imaging/instrument.py",
+    "version": "0.4.1",
+    "optical_tables": [],
+    "objectives": [
+        {
+            "daq_channel": {
+                "index": 0,
+                "type": "Digital Output"
+            },120
+            "manufacturer": "Nikon",
+            "serial_number": "",
+            "model": "",
+            "numerical_aperture": 0.8,
+            "magnification": 16,
+            "immersion": "water"
+        }
+    ],
+    "detectors": [
+        {
+            "daq_channel": {
+                "index": 1,
+                "type": "Analog Output"
+            },
+            "manufacturer": "Hamamatsu",
+            "model": "AF7695",
+            "serial_number": "",
+            "type": "",
+            "data_interface": "",
+            "cooling": "air"
+        }
+    ],
+    "light_sources": [
+        {
+            "daq_channel": {
+                "index": 1,
+                "type": "Analog Output"
+            },
+            "manufacturer": "Coherent",
+            "serial_number": "0918012925",
+            "model": "Monaco",
+            "notes": "",
+            "type": "laser",
+            "coupling": "Free-space",
+            "wavelength": 1035,
+            "max_power": 40000
+        }
+        {
+            "daq_channel": {
+                "index": 1,
+                "type": "Analog Output"
+            },
+            "manufacturer": "Coherent",
+            "serial_number": "GDP.1185374.8460",
+            "model": "Chameleon",
+            "notes": "",
+            "type": "laser",
+            "coupling": "Free-space",
+            "wavelength": 920,
+            "max_power": 4000
+        }
+    ],
+    "instrument_id": "Photostim_BCI",
+    "type": "Two photon",
+    "location": "442",
+    "manufacturer": "Other",
+    "temperature_control": true,
+    "humidity_control": true,
+    "calibration_data": "N/A",
+    "calibration_date": "2023-01-04"
+}
