@@ -31,7 +31,7 @@ def main(folder):
     data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat);     
     
     # create dist, conditioned_neuron, conditioned_coordinates
-    data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
+   # data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
     data['dt_si'] = 1/float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
     
     
@@ -324,7 +324,7 @@ def create_zaber_info(folder,base,ops,dt_si):
     steps_abs = np.concatenate(steps_abs)
     rewT_abs = rewT_abs[rewT_abs!=0]
     trial_start = np.asarray(trial_start)
-    return rewT_abs, steps_abs, trial_start
+    return rewT[files_with_movies], steps[files_with_movies], trial_times[files_with_movies]
 
 def load_data_dict(folder):
     data = dict()
