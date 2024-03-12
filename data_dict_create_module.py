@@ -62,7 +62,10 @@ def main(folder):
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
         ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
         dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
-        base = siHeader['siBase'][0]
+        if isinstance(siHeader['siBase'], str):
+            base = siHeader['siBase']
+        else:
+            base = siHeader['siBase'][0]
         data['reward_time'], data['step_time'], data['trial_start']= create_zaber_info(folder,base,ops,dt_si)
     
  
@@ -321,10 +324,10 @@ def create_zaber_info(folder,base,ops,dt_si):
             rewT_abs[i] = rewT[i][0] + tt[i]
         a = steps[i] + tt[i] + zaber['scanimage_first_frame_offset'][i]
         steps_abs.append(a)    
-    steps_abs = np.concatenate(steps_abs)
-    rewT_abs = rewT_abs[rewT_abs!=0]
-    trial_start = np.asarray(trial_start)
-    return rewT[files_with_movies], steps[files_with_movies], trial_times[files_with_movies]
+    #steps_abs = np.concatenate(steps_abs)
+    #rewT_abs = rewT_abs[rewT_abs!=0]
+    #trial_start = np.asarray(trial_start)
+    return rewT[files_with_movies], steps[files_with_movies], trial_start
 
 def load_data_dict(folder):
     data = dict()
