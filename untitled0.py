@@ -1,26 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec  5 12:26:08 2023
+Created on Sun Mar  3 15:02:06 2024
 
 @author: kayvon.daie
 """
-
-import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+mpl.rcParams['figure.dpi'] = 300
+dt = 0.05
+tau = 0.05
+t=np.arange(0,2+dt,dt)
+tonic = np.ones((len(t),))
+tonic[0:5] = 0
 
-# Simulating some dummy data for a 10-neuron feedforward network
-np.random.seed(0)
-data = np.random.rand(5, 10)  # 5 instances, 10 neurons each
+ra = np.zeros((len(t),))
+ra_dot = np.zeros((len(t),))
+rs = np.zeros((len(t),))
+pert_alm = np.zeros((len(t),))
+inp = np.zeros((len(t),));inp[4:5] = 10
+tt = 1
 
-# Creating a DataFrame for easier plotting
-df = pd.DataFrame(data, columns=[f'Neuron {i+1}' for i in range(10)])
 
-# Plotting using parallel coordinates
-plt.figure(figsize=(12, 6))
-pd.plotting.parallel_coordinates(df, class_column=None, colormap='viridis')
-plt.title('Parallel Coordinates Plot for a 10-Neuron Feedforward Network')
-plt.xlabel('Neurons')
-plt.ylabel('Activity Level')
-plt.grid(True)
-plt.show()
+for i in range(1,len(tonic)):
+    rs[i] = rs[i-1] + dt/tau*(tonic[i] + ra_dot[i-1]*1)
+    ra[i] = ra[i-1] + dt/tau*(-ra[i-1] + inp[i]*0 + pert_alm[i] + rs[i])
+    if tt == 1:
+        if (i>10) & (i<15):
+            ra[i] = 0
+    ra_dot[i] = ra[i] - ra[i-1]
+    if ra_dot[i]>0:
+        ra_dot[i] = 0
+
+plt.subplot(3,1,1)
+plt.plot(rs)
+plt.subplot(3,1,2)
+plt.plot(ra)
+plt.subplot(3,1,3)
+plt.plot(ra_dot)
+    

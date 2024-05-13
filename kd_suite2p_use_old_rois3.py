@@ -19,8 +19,8 @@ mpl.rcParams['figure.dpi'] = 300
 import copy
 import shutil
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI79/011824/']
-#folder = [r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI69/011624/']
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI85/042924/']
+#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI79/042524/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -32,7 +32,7 @@ if 'old_folder' in locals():
     iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
 
 savefolders = dict()
-savefolders[0] = 'BCI';
+savefolders[0] = 'photostim';
 savefolders[1] = 'spont';
 #savefolders[2] = 'spont';
 #savefolders[2] = 'photostim2';
@@ -137,6 +137,10 @@ for ei in range(0,len(ind)):
 
 import data_dict_create_module as ddc
 data = ddc.main(folder)
+if data['mouse'] == 'BCI69':
+    bci69_folder = 'H:/My Drive/Learning rules/BCI_data/BCI_69/'
+    np.save(bci69_folder  + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
+
 #%%
 os.chdir(r'C:\Users\scanimage\Documents\Python Scripts\BCI_analysis')
 import extract_scanimage_metadata

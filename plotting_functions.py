@@ -39,9 +39,9 @@ def mean_bin_plot(xx, yy, col, pltt, A, color):
     y = np.reshape(y[:length], (col, row))
 
   
-    X = np.mean(x, axis=1)
-    Y = np.mean(y, axis=1)
-    stdEr = np.std(y, axis=1) / np.sqrt(row)
+    X = np.nanmean(x, axis=1)
+    Y = np.nanmean(y, axis=1)
+    stdEr = np.nanstd(y, axis=1) / np.sqrt(row)
 
     if pltt == 1:
         
@@ -52,7 +52,7 @@ def mean_bin_plot(xx, yy, col, pltt, A, color):
     C = c
     P = p
 
-    plt.title('P = ' + str(P))
+    #plt.title('P = ' + str(P))
     return X, Y
 
 def tif_display(file_path,strt,skp):

@@ -21,7 +21,7 @@ import copy
 import shutil
 
 #folder = [r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/090523/']
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCINM_006/011124/']
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCINM_006/021424/']
 #old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCINM_006/010324/'
 #folder = [r'C:/Users/Kayvon Daie/Documents/BCI_data/BCINM_004/120623/']
 #old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCINM_004/112923/'
@@ -96,11 +96,11 @@ for ei in range(0,len(ind)):
     ops['nimg_init'] = 500
     ops['nonrigid'] = False
     ops['smooth_sigma'] = .5
-    ops['threshold_scaling'] = .7
+    ops['threshold_scaling'] = 1
     ops['batch_size'] = 250
     ops['do_registration'] = True
-    ops['reg_tif_chan2'] = True
-    ops['reg_tif'] = True
+    ops['reg_tif_chan2'] = False
+    ops['reg_tif'] = False
     if 'old_folder' in locals():
         ops['roidetect'] = False
         ops['refImg'] = ops_old['refImg'];

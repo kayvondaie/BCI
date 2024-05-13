@@ -31,7 +31,7 @@ def main(folder):
     data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat);     
     
     # create dist, conditioned_neuron, conditioned_coordinates
-   # data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
+    data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
     data['dt_si'] = 1/float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
     
     
@@ -363,3 +363,117 @@ def read_stim_file(folder,subfolder):
     out['Y'] = phtstimdata[:, 1]
     out['Beam'] = phtstimdata[:, 2]
     return out
+
+def stimDist_single_cell(ops,F,siHeader,stat):
+    
+    trip = np.std(F,axis=0)
+    trip = np.where(trip<20)[0]
+
+    extended_trip = np.concatenate((trip, trip + 1))
+    trip = np.unique(extended_trip)
+    trip[trip>F.shape[1]-1] = F.shape[1]-1
+
+    F[:,trip] = np.nan
+    numTrl = len(ops['frames_per_file']);
+    timepts = 45;
+    numCls = F.shape[0]
+    Fstim = np.full((timepts,numCls,numTrl),np.nan)
+    Fstim_raw = np.full((timepts,numCls,numTrl),np.nan)
+    strt = 0;
+    dff = 0*F
+    pre = 5;
+    post = 20
+    
+    photostim_groups = siHeader['metadata']['json']['RoiGroups']['photostimRoiGroups']
+    seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli'];
+    list_nums = seq.strip('[]').split();
+    seq = [int(num) for num in list_nums]
+    seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition'])-1;
+    seq = seq[seqPos:]
+    seq = np.asarray(seq)
+    
+    stimID = np.zeros((F.shape[1],))
+    for ti in range(numTrl):
+        pre_pad = np.arange(strt-5,strt)
+        ind = list(range(strt,strt+ops['frames_per_file'][ti]))
+        strt = ind[-1]+1
+        post_pad = np.arange(ind[-1]+1,ind[-1]+20)
+        ind = np.concatenate((pre_pad,np.asarray(ind)),axis=0)
+        ind = np.concatenate((ind,post_pad),axis = 0)
+        ind[ind > F.shape[1]-1] = F.shape[1]-1;
+        ind[ind < 0] = 0
+        stimID[ind[pre+1]] = seq[ti]
+        a = F[:,ind].T
+        g = F[:,ind].T
+        bl = np.tile(np.mean(a[0:pre,:],axis = 0),(a.shape[0],1))
+        a = (a-bl) / bl
+        if a.shape[0]>Fstim.shape[0]:
+            a = a[0:Fstim.shape[0],:]
+        Fstim[0:a.shape[0],:,ti] = a
+        Fstim_raw[0:a.shape[0],:,ti] = g
+   
+    
+   
+    deg = siHeader['metadata']['hRoiManager']['imagingFovDeg']
+    g = [i for i in range(len(deg)) if deg.startswith(" ",i)]
+    gg = [i for i in range(len(deg)) if deg.startswith(";",i)]
+    for i in gg:
+        g.append(i)
+    g = np.sort(g)
+    num = [];
+    for i in range(len(g)-1):
+        num.append(float(deg[g[i]+1:g[i+1]]))
+    dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+    degRange = np.max(num) - np.min(num)
+    pixPerDeg = dim[0]/degRange
+
+    centroidX = []
+    centroidY = []
+    for i in range(len(stat)):
+        centroidX.append(np.mean(stat[i]['xpix']))
+        centroidY.append(np.mean(stat[i]['ypix']))
+
+    favg = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
+    favg_raw = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
+    stimDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
+    slmDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
+    
+    coordinates = photostim_groups[0]['rois'][1]['scanfields']['slmPattern']
+    coordinates = np.array([[0, 0, 0, 0]])
+    coordinates = np.asarray(coordinates)
+    if np.ndim(coordinates) == 1:
+        coordinates = coordinates.reshape(1,-1)
+    xy = coordinates[:,:2] + photostim_groups[0]['rois'][1]['scanfields']['centerXY']
+    stimPos = np.zeros(np.shape(xy))
+    stimPosition = np.zeros([stimPos.shape[0],stimPos.shape[1],len(photostim_groups)])
+    
+    seq = seq[0:Fstim.shape[2]]
+    for gi in range(len(photostim_groups)):        
+        coordinates = photostim_groups[gi]['rois'][1]['scanfields']['slmPattern']
+        if np.ndim(coordinates) == 1:
+            coordinates = np.asarray(coordinates)
+            coordinates = coordinates.reshape(1,-1)
+        galvo = photostim_groups[gi]['rois'][1]['scanfields']['centerXY']
+        
+        coordinates = np.asarray(coordinates)
+
+        xy = coordinates[:,:2] + galvo
+        xygalvo = coordinates[:,:2]*0 + galvo
+        stimPos = np.zeros(np.shape(xy))
+        galvoPos = np.zeros(np.shape(xy))
+        for i in range(np.shape(xy)[0]):
+            stimPos[i,:] = np.array(xy[i,:]-num[0])*pixPerDeg
+            galvoPos[i,:] = np.array(xygalvo[i,:]-num[0])*pixPerDeg
+        sd = np.zeros([np.shape(xy)[0],favg.shape[1]])        
+        for i in range(np.shape(xy)[0]):
+            for j in range(favg.shape[1]):
+                sd[i,j] = np.sqrt(sum((stimPos[i,:] - np.asarray([centroidX[j], centroidY[j]]))**2))
+                slmDist[j,gi] = np.sqrt(sum((galvoPos[i,:] - np.asarray([centroidX[j], centroidY[j]]))**2))                
+        stimDist[:,gi] = np.min(sd,axis=0)
+        ind = np.where(seq == gi+1)[0]
+        favg[:,:,gi] = np.nanmean(Fstim[:,:,ind],axis = 2)
+        favg_raw[:,:,gi] = np.nanmean(Fstim_raw[:,:,ind],axis = 2)
+        stimPosition[:,:,gi] = stimPos
+
+    
+    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw
