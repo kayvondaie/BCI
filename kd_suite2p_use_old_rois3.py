@@ -5,7 +5,11 @@ Created on Wed Jan 18 11:13:14 2023
 @author: scanimage
 """
 import suite2p
-import os;os.chdir('G:/My Drive/Python Scripts/BCI_analysis/')
+import os;
+#os.chdir('H:/My Drive/Python Scripts/BCI_analysis/')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+relative_path = os.path.join(script_dir)
+os.chdir(relative_path)
 import re
 from suite2p import default_ops as s2p_default_ops
 from ScanImageTiffReader import ScanImageTiffReader
@@ -19,8 +23,8 @@ mpl.rcParams['figure.dpi'] = 300
 import copy
 import shutil
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI85/042924/']
-#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI79/042524/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI85/062424/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI85/061824/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -32,7 +36,7 @@ if 'old_folder' in locals():
     iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
 
 savefolders = dict()
-savefolders[0] = 'photostim';
+savefolders[0] = 'BCI';
 savefolders[1] = 'spont';
 #savefolders[2] = 'spont';
 #savefolders[2] = 'photostim2';
