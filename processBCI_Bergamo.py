@@ -42,43 +42,39 @@ if __name__ == '__main__':
         app.exec()
         # After the application has closed, you can access the selected_files variable
         print("New Data:", secondOut.selected_folders)
-        dataPaths = [firstOut.selected_folders, secondOut.selected_folders]
+        dataPaths = [firstOut.selected_folders[0], secondOut.selected_folders[0]]
     except:
         print('Only Selecting Initial Folder')
         dataPaths = [firstOut.selected_folders]
 #assumes oldest data is "old_folder"
 #i.e. select old folder and folder of interest, manually
 dates_int = []
-for dataPath in dataPaths:
-    dates_int.append(int(dataPath.split('/')[-1]))
-oldDate = str(min(dates_int))
-old_folder = [dataPath for dataPath in dataPaths if oldDate in dataPath]
-folder = [dataPath for dataPath in dataPaths if oldDate not in dataPath] #basically, the only other file... you should only be picking 2 files here
-
-
-
-#Let Suite2p Do Its Magic
 try:
-    loadSuite2pROIS(folder, oldFolder=old_folder)
-    print('Suite2p ROIs Created')
-except Exception:
-    print('Could not load suite2p rois')
-
-#if only 1 file selected (i.e. no old folder), then old_folder becomes folder
-if len(dataPaths) == 1:
-    folder = old_folder
+    for dataPath in dataPaths:
+        dates_int.append(int(dataPath.split('/')[-1]))
+    oldDate = str(min(dates_int))
+    old_folder = [dataPath for dataPath in dataPaths if oldDate in dataPath]
+    folder = [dataPath for dataPath in dataPaths if oldDate not in dataPath] #basically, the only other file... you should only be picking 2 files here
+    print('Using Old ROIs')
+    loadSuite2pROIS(folder[0], oldFolder=old_folder[0])
+    data = ddc.load_data_dict(folder[0])
+    oldData = ddc.load_data_dict(old_folder[0])
+    generateSessionSummary(data, folder, oldData = oldData)
+    print('Session Summary Generated')
+    findConditionedNeurons(data, folder)
+    print('CNS List Generated')
+except:
     old_folder = None
-    data = ddc.load_data_dict(folder)
     oldData = None
-else:
-    data = ddc.load_data_dict(folder)
-    oldData = ddc.load_data_dict(old_folder)
+    folder = dataPaths[0]
+    data = ddc.load_data_dict(folder[0])
+    print('One Folder Selected')
+    loadSuite2pROIS(folder[0])
+    generateSessionSummary(data, folder)
+    print('Session Summary Generated')
+    findConditionedNeurons(data, folder)
+    print('CNS List Generated')
 
-generateSessionSummary(data, folder, oldData = oldData)
 
-print('Session Summary Generated')
 
-findConditionedNeurons(data, folder)
-
-print('CNS List Generated')
 
