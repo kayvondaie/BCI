@@ -8,19 +8,20 @@ import numpy as np
 import os
 import re
 def main(folder):
-    
+    print('Running the basic main function')
     data = dict()
     
     # BCI data
     if os.path.isdir(folder +r'/suite2p_BCI/'):
+        print('acquiring BCI Data') #should pop up
         stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)        
         Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
         ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
         iscell = np.load(folder + r'/suite2p_BCI/plane0/iscell.npy', allow_pickle=True)
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
-    
     data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
     data['iscell'] = iscell;
+    
     # metadata
     data['dat_file'] = folder + r'/suite2p_BCI/plane0/'
     slash_indices = [match.start() for match in re.finditer('/', folder)]
@@ -37,6 +38,7 @@ def main(folder):
     
     # photostim data
     if os.path.isdir(folder +r'/suite2p_photostim/'):
+        print('Acquiring Photostim Data') #should not pop up
         stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim/plane0/F.npy', allow_pickle=True)
         ops = np.load(folder + r'/suite2p_photostim/plane0/ops.npy', allow_pickle=True).tolist()
@@ -54,6 +56,7 @@ def main(folder):
         data['photostim2']['FstimRaw'] = Ftrace
     # spont data
     if os.path.isdir(folder +r'/suite2p_spont/'):
+        print('We are getting spont data')
         data['spont'] = np.load(folder +r'/suite2p_spont/plane0/F.npy', allow_pickle=True)
     
     #behavioral data
@@ -66,12 +69,13 @@ def main(folder):
             base = siHeader['siBase']
         else:
             base = siHeader['siBase'][0]
+        print('We are running create_zaber_info function')
         data['reward_time'], data['step_time'], data['trial_start']= create_zaber_info(folder,base,ops,dt_si)
     
  
-
+    #save ze data!
     np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
-    #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'_'+str(int(np.round(np.random.rand()*100000)))+r'.npy',data)
+
     return data
 
 def create_BCI_F(Ftrace,ops,stat):
@@ -274,43 +278,22 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
 def create_zaber_info(folder,base,ops,dt_si):
     import pandas as pd
     zaber = np.load(folder + folder[-7:-1]+r'-bpod_zaber.npy',allow_pickle=True).tolist()
-    #zaber = np.load(folder[:-1]+r'-bpod_zaber.npy',allow_pickle=True).tolist()
-    good = np.zeros((1,len(zaber['scanimage_file_names'])))[0]
-    
-    files_with_movies = []
-    for zi in range(len(zaber['scanimage_file_names'])):
-        name = str(zaber['scanimage_file_names'][zi])
-        b = name.count('_')
-        if b > 0:
-            a = max([i for i, c in enumerate(name) if c == '_'])
-            siBase = name[2:a]
-            if siBase == base:
-                files_with_movies.append(True)
-            else:
-                files_with_movies.append(False)
-        else:
-            files_with_movies.append(False)
-    
-# =============================================================================
-#     files_with_movies = []
-#     for k in zaber['scanimage_file_names']:
-#         if str(k) == 'no movie for this trial':
-#             files_with_movies.append(False)
-#         else:
-#             files_with_movies.append(True)
-# =============================================================================
-
+    files_with_movies = [base in str(zaber['scanimage_file_names'][i][0]) for i in range(len(zaber['scanimage_file_names']))]
     trl_strt = zaber['trial_start_times'][files_with_movies]
     trl_end = zaber['trial_end_times'][files_with_movies]
-    go_cue = zaber['go_cue_times'][files_with_movies]
+
+    # go_cue = zaber['go_cue_times'][files_with_movies] #don't use...
+
     trial_times = [(trl_end[i]-trl_strt[i]).total_seconds() for i in range(len(trl_strt))]
     trial_start = [(trl_strt[i]).timestamp()-(trl_strt[0]).timestamp() for i in range(len(trl_strt))]
-    trial_hit = zaber['trial_hit'][files_with_movies]
-    lick_L = zaber['lick_L'][files_with_movies]
-    rewT = zaber['reward_L'];
-    threshold_crossing_times = zaber['threshold_crossing_times'][files_with_movies]
+    
+    # trial_hit = zaber['trial_hit'][files_with_movies] #dont use
+    # lick_L = zaber['lick_L'][files_with_movies] #don't use
+
+    rewT = zaber['reward_L']
+    # threshold_crossing_times = zaber['threshold_crossing_times'][files_with_movies] #dont use
     trial_times = np.array(trial_times)
-    L = len(trial_times)
+    L = len(trial_times) #nTrials
     
     trial_times = ops['frames_per_file']*dt_si
     trial_times = trial_times[0:L]
@@ -319,6 +302,8 @@ def create_zaber_info(folder,base,ops,dt_si):
     steps = zaber['zaber_move_forward'];
     rewT_abs = np.zeros(len(tt))
     steps_abs = []
+
+
     for i in range(len(tt)-1):
         if rewT[i]:
             rewT_abs[i] = rewT[i][0] + tt[i]
@@ -333,7 +318,7 @@ def load_data_dict(folder):
     data = dict()
     slash_indices = [match.start() for match in re.finditer('/', folder)]
     data['session'] = folder[slash_indices[-2]+1:slash_indices[-1]]
-    data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]];
+    data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]]
     data = np.load(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',allow_pickle=True).tolist()
     return data
 

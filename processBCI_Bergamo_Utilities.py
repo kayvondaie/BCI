@@ -3,7 +3,8 @@ import os, re, copy, shutil, sys
 from suite2p import default_ops as s2p_default_ops
 from ScanImageTiffReader import ScanImageTiffReader
 import numpy as np
-import folder_props_fun, extract_scanimage_metadata
+# import folder_props_fun, extract_scanimage_metadata
+import extract_scanimage_metadata
 #import registration_functions
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,77 +13,92 @@ import tkinter as tk
 from tkinter import simpledialog
 import plotting_functions as pf
 from scipy.signal import medfilt
+from glob import glob
+import data_dict_create_module as ddc
 
 
-def loadSuite2pROIS(folder, oldFolder = None):
-    '''
-    Must specify old data if exists
-    '''
+def getBases(folder):
+    folder_props = folder_props_fun(folder) 
+    bases = folder_props['bases']
+    return bases
 
+def folder_props_fun(folder):
+    if not folder.endswith('/'):
+        folder = folder + '/'
+        
+    files = os.listdir(folder)
+
+    siFiles = [f for f in files if re.search('\.tif$', f)]
+    wsFiles = [f for f in files if re.search('\.h5$', f)]
+
+    folder_props = {'siFiles': siFiles, 'wsFiles': wsFiles, 'folder': folder}
+    
+    base = []
+    for name in siFiles:
+        a = max([i for i, c in enumerate(name) if c == '_'])
+        if name[:a].find('000') != -1:
+            #handling wierd and rare exception...
+            name_fix = name[:a].split('000')[0]
+            base.append(name_fix[:-1])
+        else:
+            base.append(name[:a])
+        folder_props['bases'] = list(set(base))
+    
+    
+    return folder_props
+
+def loadSuite2pROIS(basesInd, folder, old_folder):
     #If old exists
-    if oldFolder is not None:
+    if old_folder is not None:
+        print('Using Old Folder', old_folder)
         stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
         ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
         iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
     else:
+        print('Not Using Old Folder')
         stat_old = None
         ops_old = None
         iscell_old = None
     
-    savefolders = dict()
-    savefolders[1] = 'spont'
-    savefolders[0] = 'BCI' 
+
     ops = s2p_default_ops()
 
     #SETTING PARAMETERS FOR SUITE2P
     ops['data_path'] = folder
-    folder = ops['data_path'][0]
-    folder_props = folder_props_fun.folder_props_fun(folder)
+    folder = ops['data_path']
+    folder_props = folder_props_fun(folder) #using local to not mess up other scripts
     bases = folder_props['bases']
-    
-    #QUICK GUI FOR BASE SELECTION
-    root = tk.Tk()
-    root.withdraw() 
-    ind = simpledialog.askstring("Bases", "Choose your BCI and spont bases:")
-    if ind is None:
+    #Adjusting this so that filenames are more accurate
+    savefolders = dict()
+    savefolders[1] = 'spont'
+    savefolders[0] = 'BCI' 
+    if basesInd is None:
         print("Aborting: No Bases Selected")
         sys.exit()
     else:
-        ind = np.fromstring(ind[1:-1], sep=',')
-        print("User input:", ind)
+        print("User input:", basesInd)
     
     #Initiate Suite2p with specified settings
     #############################################################################################################
-    for ei in range(0,len(ind)):
+    for ei in range(0,len(basesInd)):
         if ei == 1: 
             old_folder = folder
-        if 'old_folder' in locals():
+        if old_folder is not None:
             stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
             ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
             iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
-
+        
         #base = {base for i, base in enumerate(bases) if str(i) in ind}
-        base = bases[int(ind[ei])]
+        base = bases[int(basesInd[ei])]
         siFiles = folder_props['siFiles'] #not sure what this is doing... siFiles does not get called after this...
-        files = os.listdir(folder)
-        good = np.zeros([1,np.shape(files)[0]])
         
-        #Grabbing tiffs with the epoch name contained in their name
-        for fi in range(0,np.shape(files)[0]):
-            str = files[fi]
-            a = str.find('.tif')
-            if a > -1:
-                b = max([i for i, char in enumerate(str) if char == '_'])
-                b = str[0:b]
-                if b == base:
-                    good[0][fi] = 1
-        
-        good = np.where(good == 1)
-        good = good[1]
-        
+        #grabs only the tif files that are in base
+        files = glob(folder + '*.tif')
+        good = np.array([filePath  for filePath in files if base in filePath])
+
         #only storing the good trials
-        ops['tiff_list'] = [files[i] for i in good]
-        
+        ops['tiff_list'] = good
+
         #more suite2p parameter setting
         ops['do_registration']=True
         ops['save_mat'] = True
@@ -101,7 +117,7 @@ def loadSuite2pROIS(folder, oldFolder = None):
         ops['do_registration'] = True
 
         #if roi is returned to, we can use previous roi
-        if 'old_folder' in locals():
+        if old_folder is not None:
             ops['roidetect'] = False
             ops['refImg'] = ops_old['refImg'];
             ops['force_refImg'] = True
@@ -115,7 +131,7 @@ def loadSuite2pROIS(folder, oldFolder = None):
         ops = suite2p.run_s2p(ops)  
 
         #extract traces if rois already there  
-        if 'old_folder' in locals():
+        if old_folder is not None:
             stat_new = copy.deepcopy(stat_old)
             
             #extracting ROI locations and traces
@@ -125,22 +141,30 @@ def loadSuite2pROIS(folder, oldFolder = None):
             #saving traces and rois
             cell_masks, neuropil_masks = create_masks(stat_new,ops['Ly'],ops['Lx'],ops)
             F, Fneu, F_chan2, Fneu_chan2 = extract_traces_from_masks(ops, cell_masks, neuropil_masks)
+            
+            #need to make dir first before you can save it with np.save apparently...
+            try:
+                os.makedirs(folder + ops['save_folder'] + r'/plane0/')
+            except Exception:
+                print('Overwriting exisitng directory')
+            
             np.save(folder + ops['save_folder'] + r'/plane0/F.npy',F)
             np.save(folder + ops['save_folder'] + r'/plane0/Fneu.npy',Fneu) 
             np.save(folder + ops['save_folder'] + r'/plane0/stat.npy',stat_new)
             np.save(folder + ops['save_folder'] + r'/plane0/iscell.npy',iscell_old)
+            np.save(folder + ops['save_folder'] + r'/plane0/ops.npy',ops)
             
-            folder = ops['data_path'][0]
-            file = folder + ops['tiff_list'][0]                
-            shutil.copy(ops['save_path0'] +r'/suite2p/plane0/data.bin',ops['save_path0']+ops['save_folder'] + r'/plane0/data.bin')
-        file = folder + '\\' + ops['tiff_list'][0]   
+            
+            file = ops['tiff_list'][0]
+        else:
+            file = ops['tiff_list'][0]
         
         #grabbing trial metadata (for each tiff, 1 tiff =  1 trial)             
         siHeader = extract_scanimage_metadata.extract_scanimage_metadata(file)
         siBase = dict()
         for i in range(3):
             try:
-                siBase[i] = bases[int(ind[i])]
+                siBase[i] = bases[int(basesInd[i])]
             except:
                 siBase[i] = ''
         siHeader['siBase']=siBase
@@ -149,17 +173,13 @@ def loadSuite2pROIS(folder, oldFolder = None):
         #saving trial metadat
         np.save(folder + 'suite2p_' + savefolders[ei] + r'/plane0/siHeader.npy',siHeader)
 
-    try:
-        print('Works:', folder +r'/suite2p_BCI/')
-    except Exception as e:
-        print('Malfunction', e)
 
 def boxoff():
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-def generateSessionSummary(data, folder, oldData = None):
+def generateSessionSummary(data, folder):
     '''
     must specify oldData if exists
     '''
@@ -294,3 +314,4 @@ def findConditionedNeurons(data, folder):
     plt.close() 
 
     print(cns[0:19]+1) #adding +1 for matlab because of scanimage
+    return cns[0:19]+1 #adding +1 for matlab because of scanimage
