@@ -22,9 +22,10 @@ import matplotlib.pyplot as plt
 mpl.rcParams['figure.dpi'] = 300
 import copy
 import shutil
+from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI85/062424/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI85/061824/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI88/090924/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI88/090624/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -37,7 +38,9 @@ if 'old_folder' in locals():
 
 savefolders = dict()
 savefolders[0] = 'BCI';
-savefolders[1] = 'spont';
+savefolders[1] = 'photostim';
+savefolders[2] = 'spont';
+savefolders[3] = 'BCI_pre';
 #savefolders[2] = 'spont';
 #savefolders[2] = 'photostim2';
 
@@ -47,7 +50,15 @@ folder = ops['data_path'][0]
 folder_props = folder_props_fun.folder_props_fun(folder)
 bases = folder_props['bases']
 
-print(bases)
+tif_bases = [fname.rsplit('_', 1)[0] for fname in folder_props['siFiles']]
+
+# Count occurrences of each base in the TIFF files
+base_counts = Counter(tif_bases)
+
+# Print the bases with their corresponding counts
+for index, base in enumerate(bases):
+    count = base_counts.get(base, 0)  # Get the count for the base, default to 0 if not found
+    print(f"{index}: {base} ({count} TIFFs)")
 ind = input('pick indices of bases for BCI, photostim, spont, photostim2 in that order')
 ind = np.fromstring(ind[1:-1], sep=',')
 #%%
