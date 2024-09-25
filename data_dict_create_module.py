@@ -33,12 +33,20 @@ def main(folder):
     data['session'] = folder[slash_indices[-2]+1:slash_indices[-1]]
     data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]]
     if os.path.isdir(folder +r'/suite2p_BCI/'):
+        siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist() 
+        dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
+        if dt_si < 0.05:
+            post = round(10/0.05 * 0.05/dt_si)
+            pre = round(2/0.05 * 0.05/dt_si)
+        else:
+            post = round(10/0.05)
+            pre = round(2/0.05)
         data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
         data['iscell'] = iscell;
         # metadata        
         
         # create F and Fraw
-        data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat);     
+        data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat,pre,post);     
         
         # create dist, conditioned_neuron, conditioned_coordinates
         data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
@@ -52,7 +60,7 @@ def main(folder):
         ops = np.load(folder + r'/suite2p_photostim/plane0/ops.npy', allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_photostim/plane0/siHeader.npy', allow_pickle=True).tolist()    
         data['photostim'] = dict()
-        data['photostim']['Fstim'], data['photostim']['seq'], data['photostim']['favg'], data['photostim']['stimDist'], data['photostim']['stimPosition'], data['photostim']['centroidX'], data['photostim']['centroidY'], data['photostim']['slmDist'],data['photostim']['stimID'] = create_photostim_Fstim(ops, Ftrace,siHeader,stat)
+        data['photostim']['Fstim'], data['photostim']['seq'], data['photostim']['favg'], data['photostim']['stimDist'], data['photostim']['stimPosition'], data['photostim']['centroidX'], data['photostim']['centroidY'], data['photostim']['slmDist'],data['photostim']['stimID'],data['photostim']['Fstim_raw'],data['photostim']['favg_raw'] = create_photostim_Fstim(ops, Ftrace,siHeader,stat)
         data['photostim']['FstimRaw'] = Ftrace
     if os.path.isdir(folder +r'/suite2p_photostim2/'):
         stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
@@ -78,7 +86,7 @@ def main(folder):
     #behavioral data
     behav_folder = 'I:/My Drive/Learning rules/BCI_data/behavior//' + 'BCI_' + data['mouse'][3:]
     behav_file = behav_folder + '/' + data['session'] + r'-bpod_zaber.npy';
-    if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy') or os.path.isfile(behav_file):
+    if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy') or os.path.isfile(behav_file) or os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'):
         import folder_props_fun        
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
         ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
@@ -89,15 +97,18 @@ def main(folder):
             base = siHeader['siBase'][0]
         if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy'):
             data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(folder,base,ops,dt_si)
-        else:
+        elif os.path.isfile(behav_file):
+            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(behav_file,base,ops,dt_si)
+        elif os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'):
+            behav_file = folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'
             data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(behav_file,base,ops,dt_si)
  
 
-    np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
+    #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'_'+str(int(np.round(np.random.rand()*100000)))+r'.npy',data)
     return data
 
-def create_BCI_F(Ftrace,ops,stat):
+def create_BCI_F(Ftrace,ops,stat,pre_i,post_i):
     F_trial_strt = [];
     Fraw_trial_strt = [];
     
@@ -115,23 +126,23 @@ def create_BCI_F(Ftrace,ops,stat):
         strt = ind[-1]+1
         
 
-    F = np.full((240,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
-    Fraw = np.full((240,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
-    pre = np.full((np.shape(Ftrace)[0],40),np.nan)
+    F = np.full((pre_i+post_i,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
+    Fraw = np.full((pre_i+post_i,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
+    pre = np.full((np.shape(Ftrace)[0],pre_i),np.nan)
     for i in range(len(ops['frames_per_file'])):
         f = F_trial_strt[i]
         fraw = Fraw_trial_strt[i]
         if i > 0:
-            pre = F_trial_strt[i-1][:,-40:]
-        pad = np.full((np.shape(Ftrace)[0],200),np.nan)
+            pre = F_trial_strt[i-1][:,-pre_i:]
+        pad = np.full((np.shape(Ftrace)[0],post_i),np.nan)
         f = np.concatenate((pre,f),axis = 1)
         f = np.concatenate((f,pad),axis = 1)
-        f = f[:,0:240]
+        f = f[:,0:pre_i+post_i]
         F[:,:,i] = np.transpose(f)
         
         fraw = np.concatenate((pre,fraw),axis = 1)
         fraw = np.concatenate((fraw,pad),axis = 1)
-        fraw = fraw[:,0:240]
+        fraw = fraw[:,0:pre_i+post_i]
         Fraw[:,:,i] = np.transpose(fraw)
         
         centroidX = []
@@ -197,6 +208,7 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
     timepts = 45;
     numCls = F.shape[0]
     Fstim = np.full((timepts,numCls,numTrl),np.nan)
+    Fstim_raw = np.full((timepts,numCls,numTrl),np.nan)
     strt = 0;
     dff = 0*F
     pre = 5;
@@ -223,11 +235,17 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
         ind[ind < 0] = 0
         stimID[ind[pre+1]] = seq[ti]
         a = F[:,ind].T
+        g = F[:,ind].T
         bl = np.tile(np.mean(a[0:pre,:],axis = 0),(a.shape[0],1))
         a = (a-bl) / bl
         if a.shape[0]>Fstim.shape[0]:
             a = a[0:Fstim.shape[0],:]
         Fstim[0:a.shape[0],:,ti] = a
+        try:
+            g = g[0:Fstim.shape[0],:]
+            Fstim_raw[0:g.shape[0],:,ti] = g
+        except ValueError as e:
+            print(f"Skipping trial {ti} due to shape mismatch: {e}")
    
     
    
@@ -251,6 +269,7 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
         centroidY.append(np.mean(stat[i]['ypix']))
 
     favg = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
+    favg_raw = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
     stimDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
     slmDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
     
@@ -292,10 +311,11 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
         stimDist[:,gi] = np.min(sd,axis=0)
         ind = np.where(seq == gi+1)[0]
         favg[:,:,gi] = np.nanmean(Fstim[:,:,ind],axis = 2)
+        favg_raw[:,:,gi] = np.nanmean(Fstim_raw[:,:,ind],axis = 2)
         stimPosition[:,:,gi] = stimPos
 
        
-    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID
+    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw
 
 def create_zaber_info(folder,base,ops,dt_si):
     import pandas as pd
@@ -412,7 +432,7 @@ def stimDist_single_cell(ops,F,siHeader,stat):
 
     F[:,trip] = np.nan
     numTrl = len(ops['frames_per_file']);
-    timepts = 45*round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])/16);
+    timepts = 55*round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])/16);
     numCls = F.shape[0]
     Fstim = np.full((timepts,numCls,numTrl),np.nan)
     Fstim_raw = np.full((timepts,numCls,numTrl),np.nan)
@@ -425,7 +445,7 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli'];
     list_nums = seq.strip('[]').split();
     seq = [int(num) for num in list_nums]
-    seq = seq*10
+    seq = seq*40
     seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition'])-1;
     seq = seq[seqPos:]
     seq = np.asarray(seq)
