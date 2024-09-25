@@ -8,6 +8,10 @@ import numpy as np
 import os
 import re
 import extract_scanimage_metadata
+import scipy.io
+import pandas as pd
+import glob
+
 
 
 def main(folder):
@@ -49,7 +53,7 @@ def main(folder):
         data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat,pre,post);     
         
         # create dist, conditioned_neuron, conditioned_coordinates
-        data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'] = find_conditioned_neurons(siHeader,stat)
+        data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'], data['cn_csv_index'] = find_conditioned_neurons(siHeader,stat)
         data['dt_si'] = 1/float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
         
     
@@ -96,15 +100,49 @@ def main(folder):
         else:
             base = siHeader['siBase'][0]
         if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy'):
-            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(folder,base,ops,dt_si)
+            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(folder,base,ops,dt_si)
         elif os.path.isfile(behav_file):
-            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(behav_file,base,ops,dt_si)
+            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(behav_file,base,ops,dt_si)
         elif os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'):
             behav_file = folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'
-            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'] = create_zaber_info(behav_file,base,ops,dt_si)
+            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(behav_file,base,ops,dt_si)
  
+ 
+    
 
-    #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
+    numtrl = data['F'].shape[2]
+    BCI_thresholds = np.full((2, numtrl), np.nan)
+    siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
+
+    # Determine the base for file names
+    if isinstance(siHeader['siBase'], str):
+        base = siHeader['siBase']
+    else:
+        base = siHeader['siBase'][0]
+
+    # Iterate over trials and attempt to load the corresponding threshold files
+    for i in range(numtrl):
+        try:
+            st = folder + base + r'_threshold_' + str(i+1) + r'.mat'
+            
+            # Check if the file exists before trying to load it
+            if os.path.exists(st):
+                threshold_data = scipy.io.loadmat(st)
+                BCI_thresholds[:, i] = threshold_data['BCI_threshold'].flatten()
+                
+        except:
+            pass  # Ignore any exceptions and continue with the next iteration
+    data['BCI_thresholds'] = BCI_thresholds
+    
+    csv_files = glob.glob(os.path.join(folder, base+'_IntegrationRois' + '_*.csv'))
+    csv_files = sorted(csv_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+    csv_data = []
+    for i in range(len(csv_files)):
+        csv_file = csv_files[i]
+        csv_data.append(pd.read_csv(csv_file))        
+    data['roi_csv'] = np.concatenate(csv_data)
+
+    np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'_'+str(int(np.round(np.random.rand()*100000)))+r'.npy',data)
     return data
 
@@ -201,7 +239,7 @@ def find_conditioned_neurons(siHeader,stat):
     conditioned_neuron_coordinates = cnPosPix
     conditioned_neuron = np.where(dist<10)
     
-    return dist, conditioned_neuron_coordinates, conditioned_neuron
+    return dist, conditioned_neuron_coordinates, conditioned_neuron, indices
 
 def create_photostim_Fstim(ops,F,siHeader,stat):
     numTrl = len(ops['frames_per_file']);
@@ -377,7 +415,7 @@ def create_zaber_info(folder,base,ops,dt_si):
     #rewT_abs = rewT_abs[rewT_abs!=0]
     #trial_start = np.asarray(trial_start)
     SI_start_times = zaber['Scanimage_trigger_times']
-    return rewT[files_with_movies], steps[files_with_movies], trial_start, SI_start_times[files_with_movies]
+    return rewT[files_with_movies], steps[files_with_movies], trial_start, SI_start_times[files_with_movies],threshold_crossing_times
 
 def load_data_dict(folder):
     data = dict()
