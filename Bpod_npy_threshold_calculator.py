@@ -13,7 +13,7 @@ ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist
 from scipy.interpolate import interp1d
 len_files = ops['frames_per_file'];
 cn_ind = data['cn_csv_index'][0]
-rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
+rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['threshold_crossing_time']])
 rew = ~np.isnan(rt)
 # Define frm_ind (assuming ROI is already loaded)
 roi = np.copy(data['roi_csv'])
@@ -36,16 +36,17 @@ fun = lambda x: (x > BCI_threshold[0]) * (x / np.diff(BCI_threshold)) * 3.3
 # Initialize variables
 strt = 0  # Python is 0-indexed, adjust accordingly
 dt_si = np.median(np.diff(roi[:, 0]))
-fcn = np.empty((250, len(len_files) - 1))
-FCN = np.empty((250, len(len_files) - 1))
-t_si = np.empty((250, len(len_files) - 1))
+fcn = np.empty((350, len(len_files) - 1))
+FCN = np.empty((350, len(len_files) - 1))
+t_si = np.empty((350, len(len_files) - 1))
 avg = np.empty((len(len_files) - 1,2))
 
 
 # Flatten BCI_threshold to ensure it's 1D
 BCI_thresholds = data['BCI_thresholds']
 ind = np.where(~np.isnan(BCI_thresholds[0,:]))[0][-1]
-switch = np.where(np.diff(BCI_thresholds[0,:])!=0)[0][-1]
+k = np.diff(BCI_thresholds[1,:]);
+switch = np.where((k!=0) & (~np.isnan(k)))[0][-1]
 BCI_threshold = BCI_thresholds[:,switch+1]
 
 # Define the function based on the flattened BCI_threshold
@@ -57,9 +58,9 @@ for si in range(2):
     strts = np.empty(len(len_files) - 1, dtype=int)  # Initialize with the correct length
 
     if si == 0:
-        BCI_threshold = BCI_thresholds[:,switch-1]
+        BCI_threshold = BCI_thresholds[:,switch-3]
     elif si == 1:
-        BCI_threshold = BCI_thresholds[:,switch+1]
+        BCI_threshold = BCI_thresholds[:,switch+4]
 
 
     fun = lambda x: np.minimum((x > BCI_threshold[0]) * (x / np.diff(BCI_threshold)[0]) * 3.3, 3.3)
@@ -74,17 +75,17 @@ for si in range(2):
         a = roi_interp[ind.astype(int), cn_ind + 2]
     
         # Pad with 300 NaNs as in the MATLAB code, and then select the first 250 elements
-        a_padded = np.concatenate([a, np.full(300, np.nan)])
-        fcn[:, i] = a_padded[:250]
-        FCN[:, i] = a_padded[:250]
+        a_padded = np.concatenate([a, np.full(400, np.nan)])
+        fcn[:, i] = a_padded[:350]
+        FCN[:, i] = a_padded[:350]
     
         # Repeat for t_si (first column of roi_interp)
         a = roi_interp[ind.astype(int), 0]
         a = a - a[0]  # Shift time values
     
         # Pad with 300 NaNs as in the MATLAB code, and then select the first 250 elements
-        a_padded = np.concatenate([a, np.full(300, np.nan)])
-        t_si[:, i] = a_padded[:250]
+        a_padded = np.concatenate([a, np.full(400, np.nan)])
+        t_si[:, i] = a_padded[:350]
     
         strt = strt + len_files[i]  # Update strt for the next trial
     
@@ -128,7 +129,7 @@ plt.show()
 plt.plot(1 + np.random.rand(10)/2,avg[0:switch,0],'o',color = [0,0,1])
 plt.plot(2 + np.random.rand(10)/2,avg[0:switch,1],'o',color = [.5,.5,1])
 plt.plot(plt.xlim(), [min_activity,min_activity], 'k:')  # 'k' for black line
-plt.ylabel('cumulative activity')
+plt.ylabel('Avg. voltage')
 plt.xticks([1,2], ['true', 'new_thr'])
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
