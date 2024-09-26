@@ -19,7 +19,7 @@ rew = ~np.isnan(rt)
 roi = np.copy(data['roi_csv'])
 frm_ind = np.arange(1, int(np.max(roi[:, 1])) + 1)
 
-inds = np.where(np.diff(roi[:,1])>1)[0]
+inds = np.where(np.diff(roi[:,1])<0)[0]
 for i in range(len(inds)):
     ind = inds[i]
     roi[ind+1:,1] = roi[ind+1:,1] + roi[ind,1]
@@ -98,16 +98,25 @@ for si in range(len(switches)):
         # Calculate average for this trial
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
 #%%
+plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
+plt.rcParams['font.family'] = 'Arial'
+plt.rcParams['font.size'] = 12  # Set this to the desired font size
+plt.subplot(131)
 epochs = np.concatenate((switches, [len(rew)]))
 dummy_hit = np.zeros(len(rew),)
 for si in range(len(switches)):
     ind = np.arange(epochs[si], epochs[si+1])
     min_activity = 0.35
-    dummy_hit[ind] = np.nanmean(avg[0:switches[1],si] > min_activity)
+    dummy_hit[ind] = np.nanmean(avg[0:10,si] > min_activity)
 plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(10,len(rew))
 plt.plot(dummy_hit)    
-plt.title(folder)
-#%%
+plt.xlabel('Trial #')
+plt.ylabel('Hit rate')
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+#plt.title(folder)
+
+plt.subplot(132)
 switch_frame = np.cumsum(len_files)[switch]
 t = roi_interp[:,0]
 plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.3)
@@ -115,10 +124,18 @@ plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch
 plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch-1],BCI_thresholds[1,switch-1]),color = [.5,.5, 1])
 plt.plot((t[switch_frame],t[-1]),(BCI_thresholds[0,switch+1],BCI_thresholds[0,switch+1]),color = [0,0,1])
 plt.plot((t[switch_frame],t[-1]),(BCI_thresholds[1,switch+1],BCI_thresholds[1,switch+1]),color = [0,0, 1])
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
 plt.xlabel('Time (s)')
 plt.ylabel('Raw fluorescence')
 
+plt.subplot(133);
+F = data['Fraw'];
+cn = data['conditioned_neuron'][0][0]
+plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds))
+plt.tight_layout()
 #%%
+
 t = roi_interp[:,0]
 plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.3)
 plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch-1]),color = [0,0,1])

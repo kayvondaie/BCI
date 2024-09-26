@@ -168,18 +168,20 @@ def create_BCI_F(Ftrace,ops,stat,pre_i,post_i):
     F = np.full((pre_i+post_i,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
     Fraw = np.full((pre_i+post_i,np.shape(Ftrace)[0],len(ops['frames_per_file'])),np.nan)
     pre = np.full((np.shape(Ftrace)[0],pre_i),np.nan)
+    preraw = np.full((np.shape(Ftrace)[0],pre_i),np.nan)
     for i in range(len(ops['frames_per_file'])):
         f = F_trial_strt[i]
         fraw = Fraw_trial_strt[i]
         if i > 0:
             pre = F_trial_strt[i-1][:,-pre_i:]
+            preraw = Fraw_trial_strt[i-1][:,-pre_i:]
         pad = np.full((np.shape(Ftrace)[0],post_i),np.nan)
         f = np.concatenate((pre,f),axis = 1)
         f = np.concatenate((f,pad),axis = 1)
         f = f[:,0:pre_i+post_i]
         F[:,:,i] = np.transpose(f)
         
-        fraw = np.concatenate((pre,fraw),axis = 1)
+        fraw = np.concatenate((preraw,fraw),axis = 1)
         fraw = np.concatenate((fraw,pad),axis = 1)
         fraw = fraw[:,0:pre_i+post_i]
         Fraw[:,:,i] = np.transpose(fraw)
