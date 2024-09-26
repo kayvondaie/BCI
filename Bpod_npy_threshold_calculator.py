@@ -19,7 +19,7 @@ rew = ~np.isnan(rt)
 roi = np.copy(data['roi_csv'])
 frm_ind = np.arange(1, int(np.max(roi[:, 1])) + 1)
 
-inds = np.where(np.diff(roi[:,0])<0)[0]
+inds = np.where(np.diff(roi[:,1])>1)[0]
 for i in range(len(inds)):
     ind = inds[i]
     roi[ind+1:,1] = roi[ind+1:,1] + roi[ind,1]
@@ -39,7 +39,6 @@ dt_si = np.median(np.diff(roi[:, 0]))
 fcn = np.empty((350, len(len_files) - 1))
 FCN = np.empty((350, len(len_files) - 1))
 t_si = np.empty((350, len(len_files) - 1))
-avg = np.empty((len(len_files) - 1,2))
 
 
 # Flatten BCI_threshold to ensure it's 1D
@@ -50,21 +49,18 @@ switchesu = np.where((k!=0) & (~np.isnan(k)))[0]
 k = np.diff(BCI_thresholds[0,:]);
 switchesl = np.where((k!=0) & (~np.isnan(k)))[0]
 switches = np.unique(np.concatenate((switchesu, switchesl)))
-switch = switches[0]
-BCI_threshold = BCI_thresholds[:,switch+1]
+switches  = np.concatenate(([0],switches))
+avg = np.empty((len(len_files) - 1,len(switches)))
 
 # Define the function based on the flattened BCI_threshold
-for si in range(len(switches)+1):
+for si in range(len(switches)):
     # Initialize strt at the start of the loop
     strt = 0  # Python uses 0-based indexing, corresponding to MATLAB's strt = 1
     switch = switches[si]
     # Initialize strts array to hold values
     strts = np.empty(len(len_files) - 1, dtype=int)  # Initialize with the correct length
     
-    if si == 0:
-        BCI_threshold = BCI_thresholds[:,3]
-    else:
-        BCI_threshold = BCI_thresholds[:,switch+4]
+    BCI_threshold = BCI_thresholds[:,switch+4]
 
 
     fun = lambda x: np.minimum((x > BCI_threshold[0]) * (x / np.diff(BCI_threshold)[0]) * 3.3, 3.3)
@@ -102,10 +98,15 @@ for si in range(len(switches)+1):
         # Calculate average for this trial
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
 #%%
-min_activity = 0.35
-dummy_hit = np.nanmean(avg[0:switch] > min_activity)
-plt.plot(np.convolve(rew[switch:],np.ones(10,))/10,'k');plt.xlim(10,len(rew))
-plt.plot((10,len(rew)),(dummy_hit,dummy_hit))    
+epochs = np.concatenate((switches, [len(rew)]))
+dummy_hit = np.zeros(len(rew),)
+for si in range(len(switches)):
+    ind = np.arange(epochs[si], epochs[si+1])
+    min_activity = 0.35
+    dummy_hit[ind] = np.nanmean(avg[0:switches[1],si] > min_activity)
+plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(10,len(rew))
+plt.plot(dummy_hit)    
+plt.title(folder)
 #%%
 switch_frame = np.cumsum(len_files)[switch]
 t = roi_interp[:,0]
