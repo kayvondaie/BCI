@@ -7,3 +7,4 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 mpl.rcParams['figure.dpi'] = 300
+import data_dict_create_module as ddc

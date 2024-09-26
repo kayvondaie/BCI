@@ -46,20 +46,24 @@ avg = np.empty((len(len_files) - 1,2))
 BCI_thresholds = data['BCI_thresholds']
 ind = np.where(~np.isnan(BCI_thresholds[0,:]))[0][-1]
 k = np.diff(BCI_thresholds[1,:]);
-switch = np.where((k!=0) & (~np.isnan(k)))[0][-1]
+switchesu = np.where((k!=0) & (~np.isnan(k)))[0]
+k = np.diff(BCI_thresholds[0,:]);
+switchesl = np.where((k!=0) & (~np.isnan(k)))[0]
+switches = np.unique(np.concatenate((switchesu, switchesl)))
+switch = switches[0]
 BCI_threshold = BCI_thresholds[:,switch+1]
 
 # Define the function based on the flattened BCI_threshold
-for si in range(2):
+for si in range(len(switches)+1):
     # Initialize strt at the start of the loop
     strt = 0  # Python uses 0-based indexing, corresponding to MATLAB's strt = 1
-
+    switch = switches[si]
     # Initialize strts array to hold values
     strts = np.empty(len(len_files) - 1, dtype=int)  # Initialize with the correct length
-
+    
     if si == 0:
-        BCI_threshold = BCI_thresholds[:,switch-3]
-    elif si == 1:
+        BCI_threshold = BCI_thresholds[:,3]
+    else:
         BCI_threshold = BCI_thresholds[:,switch+4]
 
 
