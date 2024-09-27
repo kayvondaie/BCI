@@ -100,6 +100,7 @@ for si in range(len(switches)):
         # Calculate average for this trial
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
 #%%
+siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
 plt.rcParams['font.family'] = 'Arial'
 plt.rcParams['font.size'] = 8  # Set this to the desired font size
@@ -108,14 +109,16 @@ epochs = np.concatenate((switches, [len(rew)]))
 dummy_hit = np.zeros(len(rew),)
 for si in range(len(switches)):
     ind = np.arange(epochs[si], epochs[si+1])
-    min_activity = 0.35
+    min_activity = float(siHeader['metadata']['hRoiManager']['linesPerFrame'])/800*.35
     dummy_hit[ind] = np.nanmean(avg[0:10,si] > min_activity)
-plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(10,len(rew))
+plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(8,len(rew))
 plt.plot(dummy_hit)    
 plt.xlabel('Trial #')
 plt.ylabel('Hit rate')
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
+for i in range(len(switches)):
+    plt.plot((switches[i],switches[i]),(0,.1),'k')
 #plt.title(folder)
 
 plt.subplot(132)
@@ -133,7 +136,7 @@ F = data['Fraw'];
 cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto')
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 20,vmax=90)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
@@ -142,7 +145,55 @@ plt.xlabel('Time from trial start (s)')
 plt.ylabel('Trial #')
 plt.tight_layout()
 #%%
+Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
+spont = data['spont']
+tspont = np.arange(0,dt_si*spont.shape[1],dt_si)
+tbci = np.arange(0,dt_si*Ftrace.shape[1],dt_si)
+plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
+plt.subplot(131)
+plt.plot(tspont,spont[cn,:],'k',linewidth = .3);
+plt.plot((tspont[0],tspont[-1]),(thr,thr),'b');
+plt.plot((tspont[0],tspont[-1]),(thr2,thr2),'b')
+plt.xlabel('Time (s)')
+plt.ylabel('Raw fluorescence')
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
 
+plt.subplot(132)
+plt.plot(np.nanmedian(spont,axis=1),np.nanmedian(Ftrace,axis=1),'k.')
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.xlabel('Spont. median')
+plt.ylabel('BCI median')
+
+plt.subplot(133)
+plt.plot(np.nanmax(spont,axis=1),np.nanmax(Ftrace,axis=1),'k.')
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.xlabel('Spont. max')
+plt.ylabel('BCI max')
+plt.tight_layout()
+plt.show()
+
+ind = np.where((np.nanmedian(spont,axis=1)>20) & (np.nanmedian(Ftrace,axis=1)<10))[0]
+plt.figure(figsize=(2, 4))  # Adjust the width and height as needed
+plt.subplot(211)
+plt.plot(tspont,spont[ind[0],:],'k',linewidth = .05);
+plt.xlabel('Time (s)')
+plt.ylabel('Spont. fluorescence')
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+
+plt.subplot(212)
+plt.plot(tbci,Ftrace[ind[0],:],'k',linewidth = .02);
+plt.xlabel('Time (s)')
+plt.ylabel('BCI fluorescence')
+plt.ylim((-20,300))
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.tight_layout()
+
+#%%
 t = roi_interp[:,0]
 plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.3)
 plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch-1]),color = [0,0,1])
