@@ -64,8 +64,9 @@ for si in range(len(switches)):
 
 
     fun = lambda x: np.minimum((x > BCI_threshold[0]) * (x / np.diff(BCI_threshold)[0]) * 3.3, 3.3)
-    
-    
+    t = roi_interp[:,0]
+    trl_frm = np.zeros(len(t),)
+    thr_time = np.full((len(t),2),np.nan);
     # Loop through the trials
     for i in range(len(len_files) - 1):
         strts[i] = strt  # Literal translation of strts(i) = strt
@@ -73,7 +74,8 @@ for si in range(len(switches)):
         ind = np.clip(ind, 0, len(roi_interp) - 1)
         # Extract and process roi_interp data for fcn and t_si
         a = roi_interp[ind.astype(int), cn_ind + 2]
-    
+        thr_time[ind,0] = BCI_thresholds[0,i]
+        thr_time[ind,1] = BCI_thresholds[1,i]
         # Pad with 300 NaNs as in the MATLAB code, and then select the first 250 elements
         a_padded = np.concatenate([a, np.full(400, np.nan)])
         fcn[:, i] = a_padded[:350]
@@ -118,22 +120,20 @@ plt.gca().spines['right'].set_visible(False)
 
 plt.subplot(132)
 switch_frame = np.cumsum(len_files)[switch]
-t = roi_interp[:,0]
 plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.04)
-plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch-1]),color = [.5,.5,1])
-plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch-1],BCI_thresholds[1,switch-1]),color = [.5,.5, 1])
-plt.plot((t[switch_frame],t[-1]),(BCI_thresholds[0,switch+1],BCI_thresholds[0,switch+1]),color = [0,0,1])
-plt.plot((t[switch_frame],t[-1]),(BCI_thresholds[1,switch+1],BCI_thresholds[1,switch+1]),color = [0,0, 1])
+plt.plot(t,thr_time,'b')
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.xlabel('Time (s)')
 plt.ylabel('Raw fluorescence')
+plt.title(data['mouse'] + '  ' + data['session'])
 
 plt.subplot(133);
 F = data['Fraw'];
-cn = data['conditioned_neuron'][0][1]
+cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
-plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
+#plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
+plt.imshow(F[:,cn,:].T,aspect='auto')
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
