@@ -145,306 +145,306 @@ plt.xlabel('Time from trial start (s)')
 plt.ylabel('Trial #')
 plt.tight_layout()
 #%%
-Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
-spont = data['spont']
-tspont = np.arange(0,dt_si*spont.shape[1],dt_si)
-tbci = np.arange(0,dt_si*Ftrace.shape[1],dt_si)
-plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
-plt.subplot(131)
-plt.plot(tspont,spont[cn,:],'k',linewidth = .3);
-plt.plot((tspont[0],tspont[-1]),(thr,thr),'b');
-plt.plot((tspont[0],tspont[-1]),(thr2,thr2),'b')
-plt.xlabel('Time (s)')
-plt.ylabel('Raw fluorescence')
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
+# Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
+# spont = data['spont']
+# tspont = np.arange(0,dt_si*spont.shape[1],dt_si)
+# tbci = np.arange(0,dt_si*Ftrace.shape[1],dt_si)
+# plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
+# plt.subplot(131)
+# plt.plot(tspont,spont[cn,:],'k',linewidth = .3);
+# plt.plot((tspont[0],tspont[-1]),(thr,thr),'b');
+# plt.plot((tspont[0],tspont[-1]),(thr2,thr2),'b')
+# plt.xlabel('Time (s)')
+# plt.ylabel('Raw fluorescence')
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
 
-plt.subplot(132)
-plt.plot(np.nanmedian(spont,axis=1),np.nanmedian(Ftrace,axis=1),'k.')
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
-plt.xlabel('Spont. median')
-plt.ylabel('BCI median')
+# plt.subplot(132)
+# plt.plot(np.nanmedian(spont,axis=1),np.nanmedian(Ftrace,axis=1),'k.')
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
+# plt.xlabel('Spont. median')
+# plt.ylabel('BCI median')
 
-plt.subplot(133)
-plt.plot(np.nanmax(spont,axis=1),np.nanmax(Ftrace,axis=1),'k.')
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
-plt.xlabel('Spont. max')
-plt.ylabel('BCI max')
-plt.tight_layout()
-plt.show()
+# plt.subplot(133)
+# plt.plot(np.nanmax(spont,axis=1),np.nanmax(Ftrace,axis=1),'k.')
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
+# plt.xlabel('Spont. max')
+# plt.ylabel('BCI max')
+# plt.tight_layout()
+# plt.show()
 
-ind = np.where((np.nanmedian(spont,axis=1)>20) & (np.nanmedian(Ftrace,axis=1)<10))[0]
-plt.figure(figsize=(2, 4))  # Adjust the width and height as needed
-plt.subplot(211)
-plt.plot(tspont,spont[ind[0],:],'k',linewidth = .05);
-plt.xlabel('Time (s)')
-plt.ylabel('Spont. fluorescence')
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
+# ind = np.where((np.nanmedian(spont,axis=1)>20) & (np.nanmedian(Ftrace,axis=1)<10))[0]
+# plt.figure(figsize=(2, 4))  # Adjust the width and height as needed
+# plt.subplot(211)
+# plt.plot(tspont,spont[ind[0],:],'k',linewidth = .05);
+# plt.xlabel('Time (s)')
+# plt.ylabel('Spont. fluorescence')
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
 
-plt.subplot(212)
-plt.plot(tbci,Ftrace[ind[0],:],'k',linewidth = .02);
-plt.xlabel('Time (s)')
-plt.ylabel('BCI fluorescence')
-plt.ylim((-20,300))
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
-plt.tight_layout()
+# plt.subplot(212)
+# plt.plot(tbci,Ftrace[ind[0],:],'k',linewidth = .02);
+# plt.xlabel('Time (s)')
+# plt.ylabel('BCI fluorescence')
+# plt.ylim((-20,300))
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
+# plt.tight_layout()
 
-#%%
-t = roi_interp[:,0]
-plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.3)
-plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch-1]),color = [0,0,1])
-plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch-1],BCI_thresholds[1,switch-1]),color = [0,0, 1])
-plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch+1],BCI_thresholds[0,switch+1]),color = [.5,.5,1])
-plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch+1],BCI_thresholds[1,switch+1]),color = [.5,.5,1])
+# #%%
+# t = roi_interp[:,0]
+# plt.plot(t,roi_interp[:,cn_ind+2],'k',linewidth=.3)
+# plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch-1],BCI_thresholds[0,switch-1]),color = [0,0,1])
+# plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch-1],BCI_thresholds[1,switch-1]),color = [0,0, 1])
+# plt.plot((0,t[switch_frame]),(BCI_thresholds[0,switch+1],BCI_thresholds[0,switch+1]),color = [.5,.5,1])
+# plt.plot((0,t[switch_frame]),(BCI_thresholds[1,switch+1],BCI_thresholds[1,switch+1]),color = [.5,.5,1])
 
-plt.xlabel('Time (s)')
-plt.ylabel('Raw fluorescence')
-plt.xlim((0,80))
-plt.show()
+# plt.xlabel('Time (s)')
+# plt.ylabel('Raw fluorescence')
+# plt.xlim((0,80))
+# plt.show()
 
-plt.plot(1 + np.random.rand(10)/2,avg[0:switch,0],'o',color = [0,0,1])
-plt.plot(2 + np.random.rand(10)/2,avg[0:switch,1],'o',color = [.5,.5,1])
-plt.plot(plt.xlim(), [min_activity,min_activity], 'k:')  # 'k' for black line
-plt.ylabel('Avg. voltage')
-plt.xticks([1,2], ['true', 'new_thr'])
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
-plt.show()
+# plt.plot(1 + np.random.rand(10)/2,avg[0:switch,0],'o',color = [0,0,1])
+# plt.plot(2 + np.random.rand(10)/2,avg[0:switch,1],'o',color = [.5,.5,1])
+# plt.plot(plt.xlim(), [min_activity,min_activity], 'k:')  # 'k' for black line
+# plt.ylabel('Avg. voltage')
+# plt.xticks([1,2], ['true', 'new_thr'])
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
+# plt.show()
 
-plt.plot(avg[0:10,0],rew[0:10],'ko');
-plt.plot((min_activity,min_activity),(0,1),'k:')
-plt.yticks((0,1),['Miss','Hit'])
-plt.xlabel
-plt.xlim(0,2)
-plt.ylim(-.1,1.1)
-#%%
-
-
+# plt.plot(avg[0:10,0],rew[0:10],'ko');
+# plt.plot((min_activity,min_activity),(0,1),'k:')
+# plt.yticks((0,1),['Miss','Hit'])
+# plt.xlabel
+# plt.xlim(0,2)
+# plt.ylim(-.1,1.1)
+# #%%
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
-
-# Define the decaying exponential model
-def exp_model(x, a, l, c):
-    return a * np.exp(-x / l) + c
-
-# Clean the data by removing rows where rt or avg are NaN
-ind = np.where(~np.isnan(rt[:len(avg)]) & ~np.isnan(avg))[0]
-
-# Prepare the x-axis values for plotting the fit
-x = np.linspace(0, np.max(avg), 1000)
-
-# Fit the exponential model to the data
-popt, pcov = curve_fit(exp_model, avg[ind], rt[ind], p0=(1, 1, 1))  # Initial guess (1, 1, 1)
-
-# Extract the fit parameters
-A, l, c = popt
-
-# Create the fitted values using the model
-fit = exp_model(x, A, l, c)
-
-# Plot the data points and the fitted curve
-plt.scatter(avg[ind], rt[ind], color='k', facecolor='w', label='Data')
-plt.plot(x, fit, label=f'Fit: A={A:.2f}, l={l:.2f}, c={c:.2f}')
-plt.xlabel('avg "voltage"')
-plt.ylabel('Time to reward (s)')
-
-# Calculate and plot the minimum activity where fit > 10
-min_activity = x[np.max(np.where(fit > 10))]
-plt.axvline(min_activity, color='k', linestyle=':')
-
-# Annotate the plot with the minimum activity value
-plt.text(min_activity + 0.1, 14, f'V = {round(min_activity, 2)}')
-
-# Add final touches and title
-plt.title(folder)
-plt.legend()
-plt.show()
 
 
-#%%
+# import numpy as np
+# import matplotlib.pyplot as plt
+# from scipy.optimize import curve_fit
 
-import numpy as np
-import matplotlib.pyplot as plt
+# # Define the decaying exponential model
+# def exp_model(x, a, l, c):
+#     return a * np.exp(-x / l) + c
 
-# Initialize new_thr and new_slp
-pc = np.linspace(0, 90, 100)
-new_thr = np.percentile(roi_interp[:, cn + 2], pc)  # Similar to MATLAB's prctile
-new_thr = BCI_threshold[0] * np.linspace(0.5, 1.5, 100)
-new_slp = BCI_threshold[1] * np.linspace(0.5, 2, 100)
+# # Clean the data by removing rows where rt or avg are NaN
+# ind = np.where(~np.isnan(rt[:len(avg)]) & ~np.isnan(avg))[0]
 
-# Initialize avg_new
-avg_new = np.zeros((122, 100, 100))
-new_rt = np.zeros((122, 100, 100))
+# # Prepare the x-axis values for plotting the fit
+# x = np.linspace(0, np.max(avg), 1000)
 
-# Loop over thresholds and slopes
-for ti in range(len(new_thr)):
-    for si in range(len(new_slp)):
-        # Define the function to compute activity
-        fun = lambda x: np.minimum((x > new_thr[ti]) * (x / (new_slp[si] - new_thr[ti])) * 3.3, 3.3)
+# # Fit the exponential model to the data
+# popt, pcov = curve_fit(exp_model, avg[ind], rt[ind], p0=(1, 1, 1))  # Initial guess (1, 1, 1)
+
+# # Extract the fit parameters
+# A, l, c = popt
+
+# # Create the fitted values using the model
+# fit = exp_model(x, A, l, c)
+
+# # Plot the data points and the fitted curve
+# plt.scatter(avg[ind], rt[ind], color='k', facecolor='w', label='Data')
+# plt.plot(x, fit, label=f'Fit: A={A:.2f}, l={l:.2f}, c={c:.2f}')
+# plt.xlabel('avg "voltage"')
+# plt.ylabel('Time to reward (s)')
+
+# # Calculate and plot the minimum activity where fit > 10
+# min_activity = x[np.max(np.where(fit > 10))]
+# plt.axvline(min_activity, color='k', linestyle=':')
+
+# # Annotate the plot with the minimum activity value
+# plt.text(min_activity + 0.1, 14, f'V = {round(min_activity, 2)}')
+
+# # Add final touches and title
+# plt.title(folder)
+# plt.legend()
+# plt.show()
+
+
+# #%%
+
+# import numpy as np
+# import matplotlib.pyplot as plt
+
+# # Initialize new_thr and new_slp
+# pc = np.linspace(0, 90, 100)
+# new_thr = np.percentile(roi_interp[:, cn + 2], pc)  # Similar to MATLAB's prctile
+# new_thr = BCI_threshold[0] * np.linspace(0.5, 1.5, 100)
+# new_slp = BCI_threshold[1] * np.linspace(0.5, 2, 100)
+
+# # Initialize avg_new
+# avg_new = np.zeros((122, 100, 100))
+# new_rt = np.zeros((122, 100, 100))
+
+# # Loop over thresholds and slopes
+# for ti in range(len(new_thr)):
+#     for si in range(len(new_slp)):
+#         # Define the function to compute activity
+#         fun = lambda x: np.minimum((x > new_thr[ti]) * (x / (new_slp[si] - new_thr[ti])) * 3.3, 3.3)
 
         
-        strt = 0  # Initialize start index
-        for i in range(122):  # 122 iterations, based on your final size of avg_new
-            strts = strt
-            ind = np.arange(strt, strt + len_files[i], dtype=int)  # Indexes as in MATLAB
+#         strt = 0  # Initialize start index
+#         for i in range(122):  # 122 iterations, based on your final size of avg_new
+#             strts = strt
+#             ind = np.arange(strt, strt + len_files[i], dtype=int)  # Indexes as in MATLAB
             
-            # Get roi_interp data for fcn and t_si
-            a = roi_interp[ind, cn + 2]
-            a_padded = np.concatenate([a, np.full(300, np.nan)])  # Pad with 300 NaNs
-            fcn = a_padded[:250]
+#             # Get roi_interp data for fcn and t_si
+#             a = roi_interp[ind, cn + 2]
+#             a_padded = np.concatenate([a, np.full(300, np.nan)])  # Pad with 300 NaNs
+#             fcn = a_padded[:250]
             
-            a = roi_interp[ind, 0] - roi_interp[ind, 0][0]  # Time-shifted
-            a_padded = np.concatenate([a, np.full(300, np.nan)])  # Pad with 300 NaNs
-            t_si = a_padded[:250]
+#             a = roi_interp[ind, 0] - roi_interp[ind, 0][0]  # Time-shifted
+#             a_padded = np.concatenate([a, np.full(300, np.nan)])  # Pad with 300 NaNs
+#             t_si = a_padded[:250]
             
-            strt += len_files[i]  # Update strt for the next iteration
+#             strt += len_files[i]  # Update strt for the next iteration
             
-            # Determine stopping point
-            if rew[i]:
-                stp = np.max(np.where(t_si < rt[i])[0])
-            else:
-                stp = len(t_si)
+#             # Determine stopping point
+#             if rew[i]:
+#                 stp = np.max(np.where(t_si < rt[i])[0])
+#             else:
+#                 stp = len(t_si)
 
-            # Compute avg_new
-            avg_new[i, ti, si] = np.nanmean(fun(fcn[:stp]))
-            new_rt[i,ti,si] = exp_model(np.nanmean(fun(fcn[:stp])), A, l, c)
+#             # Compute avg_new
+#             avg_new[i, ti, si] = np.nanmean(fun(fcn[:stp]))
+#             new_rt[i,ti,si] = exp_model(np.nanmean(fun(fcn[:stp])), A, l, c)
 
-# Apply the model function to avg_new
-#new_rt = model(avg_new)
+# # Apply the model function to avg_new
+# #new_rt = model(avg_new)
 
-# Compute hit rate
-new_hit = np.mean(new_rt < 10, axis=0)
+# # Compute hit rate
+# new_hit = np.mean(new_rt < 10, axis=0)
 
-# Plotting the results
-plt.figure()
-plt.imshow(new_hit, aspect='auto', origin='upper')
-plt.colorbar(label='Hit rate')
+# # Plotting the results
+# plt.figure()
+# plt.imshow(new_hit, aspect='auto', origin='upper')
+# plt.colorbar(label='Hit rate')
 
-# Set Y ticks (Lower threshold)
-y_inds = np.arange(0, 100, 20)
-y_values = np.round(new_thr[::20])
-plt.yticks(y_inds, y_values)
+# # Set Y ticks (Lower threshold)
+# y_inds = np.arange(0, 100, 20)
+# y_values = np.round(new_thr[::20])
+# plt.yticks(y_inds, y_values)
 
-# Set X ticks (Upper threshold)
-x_inds = np.arange(0, 100, 20)
-x_values = np.round(new_slp[::20] * 100) / 100
-plt.xticks(x_inds, x_values)
+# # Set X ticks (Upper threshold)
+# x_inds = np.arange(0, 100, 20)
+# x_values = np.round(new_slp[::20] * 100) / 100
+# plt.xticks(x_inds, x_values)
 
-# Mark the current thresholds
-currentx = np.min(np.where(new_slp >= BCI_threshold[1]))
-currenty = np.min(np.where(new_thr >= BCI_threshold[0]))
-plt.plot(currentx, currenty, 'wo', markersize=10)
+# # Mark the current thresholds
+# currentx = np.min(np.where(new_slp >= BCI_threshold[1]))
+# currenty = np.min(np.where(new_thr >= BCI_threshold[0]))
+# plt.plot(currentx, currenty, 'wo', markersize=10)
 
-# Labels
-plt.xlabel('Upper threshold')
-plt.ylabel('Lower threshold')
-plt.title('Hit Rate Heatmap')
-plt.show()
-#%%
-import matplotlib.pyplot as plt
-BCI_threshold = threshold_data['BCI_threshold']
-BCI_threshold = BCI_threshold.flatten()
-t = np.arange(0, dt_si * FCN.shape[0], dt_si)
-plt.figure(figsize=(6, 3))  # Adjust the width and height as needed
-plt.rcParams['font.family'] = 'Arial'
-plt.rcParams['font.size'] = 12  # Set this to the desired font size
-HIT = []
-for ii in range(3):
-# Increase the figure size to give more space for each subplot
+# # Labels
+# plt.xlabel('Upper threshold')
+# plt.ylabel('Lower threshold')
+# plt.title('Hit Rate Heatmap')
+# plt.show()
+# #%%
+# import matplotlib.pyplot as plt
+# BCI_threshold = threshold_data['BCI_threshold']
+# BCI_threshold = BCI_threshold.flatten()
+# t = np.arange(0, dt_si * FCN.shape[0], dt_si)
+# plt.figure(figsize=(6, 3))  # Adjust the width and height as needed
+# plt.rcParams['font.family'] = 'Arial'
+# plt.rcParams['font.size'] = 12  # Set this to the desired font size
+# HIT = []
+# for ii in range(3):
+# # Increase the figure size to give more space for each subplot
     
-    # Loop to create subplots and plot data
-    strt = 3
-    stp = 4
-    if ii == 0:
-        AA = BCI_threshold*0
-        AA[0] = new_thr[currenty]
-        AA[1] = new_slp[currentx]
-        hit = avg_new[:,currenty,currentx] 
-        color = 'b'
-    elif ii == 1:
-        AA = BCI_threshold*0
-        AA[0] = new_thr[80]
-        AA[1] = new_slp[currentx]
-        hit = avg_new[:,80,currentx] 
-        color = [.5,.5,1]
-    elif ii == 2:
-        AA = BCI_threshold*0
-        AA[0] = new_thr[currenty]
-        AA[1] = new_slp[99]
-        hit = avg_new[:,currenty,99] 
-        color = [.9,.9,1]
-    HIT.append(hit)
-    fun = lambda x: np.minimum((x > AA[0]) * (x / np.diff(AA)[0]) * 3.3, 3.3)
+#     # Loop to create subplots and plot data
+#     strt = 3
+#     stp = 4
+#     if ii == 0:
+#         AA = BCI_threshold*0
+#         AA[0] = new_thr[currenty]
+#         AA[1] = new_slp[currentx]
+#         hit = avg_new[:,currenty,currentx] 
+#         color = 'b'
+#     elif ii == 1:
+#         AA = BCI_threshold*0
+#         AA[0] = new_thr[80]
+#         AA[1] = new_slp[currentx]
+#         hit = avg_new[:,80,currentx] 
+#         color = [.5,.5,1]
+#     elif ii == 2:
+#         AA = BCI_threshold*0
+#         AA[0] = new_thr[currenty]
+#         AA[1] = new_slp[99]
+#         hit = avg_new[:,currenty,99] 
+#         color = [.9,.9,1]
+#     HIT.append(hit)
+#     fun = lambda x: np.minimum((x > AA[0]) * (x / np.diff(AA)[0]) * 3.3, 3.3)
     
     
 
-    for i in range(stp-strt):
-        # First row of subplots
+#     for i in range(stp-strt):
+#         # First row of subplots
         
-        clr = 'k'
+#         clr = 'k'
         
         
-        plt.subplot(2, 3, ii+1)
-        plt.xlim(0,10)
-        plt.plot(t,FCN[:, i+strt], color=clr, linewidth=1)
-        plt.plot(plt.xlim(), [AA[0], AA[0]], color=color)  # 'k' for black line
-        plt.plot(plt.xlim(), [AA[1], AA[1]], color=color)  # 'k' for black line
-        plt.ylim(50, 1000)
-        plt.tight_layout()
+#         plt.subplot(2, 3, ii+1)
+#         plt.xlim(0,10)
+#         plt.plot(t,FCN[:, i+strt], color=clr, linewidth=1)
+#         plt.plot(plt.xlim(), [AA[0], AA[0]], color=color)  # 'k' for black line
+#         plt.plot(plt.xlim(), [AA[1], AA[1]], color=color)  # 'k' for black line
+#         plt.ylim(50, 1000)
+#         plt.tight_layout()
             
     
     
-        # Remove y-axis labels for all but the first plot in the row
-        if i > 0:
-            plt.gca().set_yticks([])
-            plt.gca().set_ylabel('')
-        plt.gca().spines['top'].set_visible(False)
-        plt.gca().spines['right'].set_visible(False)
-        # Second row of subplots
-        plt.subplot(2, 3, ii+4)
-        plt.xlim(0,10)
-        plt.plot(t,fun(FCN[:, i+strt]), color = clr, linewidth=1)        
-        plt.ylim(0, 4)
-        plt.tight_layout()
-        plt.gca().spines['top'].set_visible(False)
-        plt.gca().spines['right'].set_visible(False)
+#         # Remove y-axis labels for all but the first plot in the row
+#         if i > 0:
+#             plt.gca().set_yticks([])
+#             plt.gca().set_ylabel('')
+#         plt.gca().spines['top'].set_visible(False)
+#         plt.gca().spines['right'].set_visible(False)
+#         # Second row of subplots
+#         plt.subplot(2, 3, ii+4)
+#         plt.xlim(0,10)
+#         plt.plot(t,fun(FCN[:, i+strt]), color = clr, linewidth=1)        
+#         plt.ylim(0, 4)
+#         plt.tight_layout()
+#         plt.gca().spines['top'].set_visible(False)
+#         plt.gca().spines['right'].set_visible(False)
     
-        # Remove y-axis labels for all but the first plot in the row
-        if i > 0:
-            plt.gca().set_yticks([])
-            plt.gca().set_ylabel('')
+#         # Remove y-axis labels for all but the first plot in the row
+#         if i > 0:
+#             plt.gca().set_yticks([])
+#             plt.gca().set_ylabel('')
     
-    # Optionally, you can adjust spacing between subplots
-    plt.subplots_adjust(wspace=0.3, hspace=0.3)  # Adjust these values to change the spacing
+#     # Optionally, you can adjust spacing between subplots
+#     plt.subplots_adjust(wspace=0.3, hspace=0.3)  # Adjust these values to change the spacing
     
-plt.show()
+# plt.show()
 
-plt.figure(figsize=(3, 3))  # Adjust the width and height as needed
-plt.rcParams['font.family'] = 'Arial'
-plt.rcParams['font.size'] = 12  # Set this to the desired font size
+# plt.figure(figsize=(3, 3))  # Adjust the width and height as needed
+# plt.rcParams['font.family'] = 'Arial'
+# plt.rcParams['font.size'] = 12  # Set this to the desired font size
 
-for i in range(3):
-    if i == 0:
-        color = 'b'
-    elif i == 1:
-        color = [.5,.5,1]
-    elif i == 2:
-        color = [.9,.9,1]
-    y = HIT[i]
-    x = i + np.random.randn(*y.shape) / 10
-    plt.plot(x,y,'.',color=color)
-plt.plot(plt.xlim(), [min_activity,min_activity], 'k:')  # 'k' for black line
-plt.ylabel('cumulative activity')
-plt.xticks([0,1,2], ['true', 'medium', 'hard'])
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
+# for i in range(3):
+#     if i == 0:
+#         color = 'b'
+#     elif i == 1:
+#         color = [.5,.5,1]
+#     elif i == 2:
+#         color = [.9,.9,1]
+#     y = HIT[i]
+#     x = i + np.random.randn(*y.shape) / 10
+#     plt.plot(x,y,'.',color=color)
+# plt.plot(plt.xlim(), [min_activity,min_activity], 'k:')  # 'k' for black line
+# plt.ylabel('cumulative activity')
+# plt.xticks([0,1,2], ['true', 'medium', 'hard'])
+# plt.gca().spines['top'].set_visible(False)
+# plt.gca().spines['right'].set_visible(False)
 
 
 
