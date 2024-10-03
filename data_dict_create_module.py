@@ -259,9 +259,10 @@ def create_photostim_Fstim(ops,F,siHeader,stat):
     seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli'];
     list_nums = seq.strip('[]').split();
     seq = [int(num) for num in list_nums]
-    seq = seq*10
+    seq = seq*30
     seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition'])-1;
-    seq = seq[seqPos:Fstim.shape[2]]
+    seq = seq[seqPos:]
+    seq = seq[0:Fstim.shape[2]]
     seq = np.asarray(seq)
     
     stimID = np.zeros((F.shape[1],))
