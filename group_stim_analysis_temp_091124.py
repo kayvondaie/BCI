@@ -6,7 +6,7 @@ Created on Tue Sep 10 09:29:04 2024
 """
 siHeader = np.load(folder + r'/suite2p_photostim/plane0/siHeader.npy', allow_pickle=True).tolist()
 #%%
-favg = data['photostim']['favg']
+favg = data['photostim']['favg_raw']
 # for i in range(favg.shape[1]):
 #      bl = np.nanmean(favg[0:4,i,:])
 #      favg[:,i,:] = (favg[:,i,:]-bl)/bl
@@ -26,7 +26,8 @@ plt.xlabel('Time (s)')
 plt.tight_layout()
 #%%
 amp = np.nanmean(favg[9:11,:,:],axis = 0)-np.nanmean(favg[0:4,:,:],axis = 0);
-plt.plot(stimDist[cl,:],amp[cl,:],'.')
+#plt.plot(stimDist[cl,:],amp[cl,:],'.')
+plt.plot(stimDist.flatten(),amp.flatten(),'k.',markersize=.5)
 #%%
 N = favg.shape[1]
 W = np.zeros((N,N))
