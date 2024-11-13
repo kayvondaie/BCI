@@ -79,8 +79,10 @@ def main(folder):
             except:
                 pass  # Ignore any exceptions and continue with the next iteration
         data['BCI_thresholds'] = BCI_thresholds
-        
-        csv_files = glob.glob(os.path.join(folder, base+'_IntegrationRois' + '_*.csv'))
+        pophys_subfolder = os.path.join(folder, 'pophys')
+        if os.path.isdir(pophys_subfolder):
+            csv_folder = pophys_subfolder
+        csv_files = glob.glob(os.path.join(csv_folder, base+'_IntegrationRois' + '_*.csv'))
         csv_files = sorted(csv_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         csv_data = []
         for i in range(len(csv_files)):
