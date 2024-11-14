@@ -74,8 +74,8 @@ cco = np.corrcoef(df_old)
 
 F = new['F']
 Fo = old['F']
-k = np.nanmean(F[60:160,:,:],axis= 0)
-ko = np.nanmean(Fo[60:160,:,:],axis=0)
+k = np.nanmean(F[60:120,:,:],axis= 0)
+ko = np.nanmean(Fo[60:120,:,:],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 
@@ -88,7 +88,7 @@ for i in range(SD[0].shape[1]):
     stm_cl = np.where(SD[0][:,i]<10)[0]
     ind = np.where(SD[0][:,i]>15)[0]
     
-    cc_sub = cc[np.ix_(ind, stm_cl)]
+    cc_sub = cco[np.ix_(ind, stm_cl)]
     amp_sub = AMP[1][stm_cl,i]
     x = np.dot(cc_sub,amp_sub)
     X.append(x.T)

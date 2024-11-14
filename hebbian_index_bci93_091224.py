@@ -54,7 +54,7 @@ for i in range(2):
     plt.plot(stimDist.flatten(),amp.flatten(),'k.',markersize = .5)   
     plt.show()
     bins = []
-    bins.append((0,20));bins.append((30,80));bins.append((80,200));bins.append((200,10000));  
+    bins.append((0,10));bins.append((30,80));bins.append((80,200));bins.append((200,10000));  
     for i in range(len(bins)):
         plt.subplot(2,2,i+1)
         A = []
