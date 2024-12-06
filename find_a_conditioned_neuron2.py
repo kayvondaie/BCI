@@ -38,8 +38,8 @@ except:
     a=[]
 
 iscell = data['iscell']
-cns = np.where(((tune) > .11) & (np.asarray(evts) > .06) & (iscell[:,0]==1))[0]
-
+cns = np.where(((tune) < .0) & (np.asarray(evts) > .06) & (iscell[:,0]==1))[0]
+cns = cns[cns != cn]
 
 fig, axs = plt.subplots(12, 5, figsize=(5, 10))  # Adjust figsize as needed
 # [rest of your plotting code]
@@ -66,7 +66,7 @@ for i in range(40, 60):
     x = int(x)
     y = int(y)
     a = img[y - win:y + win, x - win:x + win]
-    axs[i].imshow(a, vmin=0, vmax=100, cmap='gray')
+    axs[i].imshow(a, vmin=0, vmax=200, cmap='gray')
     axs[i].axis('off')
     axs[i].set_title(str(cns[i-40]), fontsize=6)
 print(cns[0:19]+1)
