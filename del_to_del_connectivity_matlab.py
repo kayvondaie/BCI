@@ -11,11 +11,10 @@ except:
     !pip install mat73
     import mat73
  
-mypath2 = 'H:/My Drive/Learning rules/BCI_data/combined_new_old_060524.mat' 
+mypath2 = 'G:/My Drive/Learning rules/BCI_data/combined_new_old_060524.mat' 
 data_dict = mat73.loadmat(mypath2)
 #data = data_combined['data']
 #%%
-
 I = 0
 maxtrials = 40
 near = 30
@@ -54,7 +53,7 @@ for di in range(len(data_dict['data']['F'])-1):
 
         f = np.nanmean(F[:, :, 0:maxtrials], axis = 2)
         f = f - np.nanmean(f[before, :], axis = 0)[None, :]
-        fo = np.nanmean(Fo[:, :, 0:maxtrials], axis = 2)
+        fo = np.nanmean(Fo[:, :, 0:], axis = 2)
         fo = fo - np.nanmean(fo[before, :], axis = 0)[None, :]
         fs = np.nanmean(f[tind], axis = 0)
         fso = np.nanmean(fo[tind], axis = 0)
