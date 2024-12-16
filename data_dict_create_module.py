@@ -82,6 +82,8 @@ def main(folder):
         pophys_subfolder = os.path.join(folder, 'pophys')
         if os.path.isdir(pophys_subfolder):
             csv_folder = pophys_subfolder
+        else:
+            csv_folder = folder
         csv_files = glob.glob(os.path.join(csv_folder, base+'_IntegrationRois' + '_*.csv'))
         csv_files = sorted(csv_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
         csv_data = []
@@ -98,7 +100,7 @@ def main(folder):
         siHeader = np.load(folder + r'/suite2p_photostim/plane0/siHeader.npy', allow_pickle=True).tolist()    
         data['photostim'] = dict()
         data['photostim']['Fstim'], data['photostim']['seq'], data['photostim']['favg'], data['photostim']['stimDist'], data['photostim']['stimPosition'], data['photostim']['centroidX'], data['photostim']['centroidY'], data['photostim']['slmDist'],data['photostim']['stimID'],data['photostim']['Fstim_raw'],data['photostim']['favg_raw'] = create_photostim_Fstim(ops, Ftrace,siHeader,stat)
-        data['photostim']['FstimRaw'] = Ftrace
+        #data['photostim']['FstimRaw'] = Ftrace
     if os.path.isdir(folder +r'/suite2p_photostim2/'):
         stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim2/plane0/F.npy', allow_pickle=True)
@@ -140,12 +142,24 @@ def main(folder):
             behav_file = folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'
             data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(behav_file,base,ops,dt_si)
  
- 
-    
 
+    # Define file paths
+    base_file_path = os.path.join(folder, f"data_{data['mouse']}_{data['session']}")
+    data_file_path = base_file_path + "_main.npy"
+    photostim_file_path = base_file_path + "_photostim.npy"
     
-
+    # Extract 'photostim' and remove it from the main dictionary
+#    photostim_data = data.pop('photostim')
+    
+    # Save the reduced 'data' dictionary
+ #   np.save(data_file_path, data, allow_pickle=True)
+    
+    # Save the 'photostim' data separately
+    # np.save(photostim_file_path, photostim_data, allow_pickle=True)
+    
     np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
+    #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy', data, allow_pickle=True, pickle_protocol=4)
+    #np.savez_compressed(folder + r'data_'+data['mouse']+r'_'+data['session'], **data)
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'_'+str(int(np.round(np.random.rand()*100000)))+r'.npy',data)
     return data
 
@@ -486,9 +500,17 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     post = 20*round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])/16)
     
     photostim_groups = siHeader['metadata']['json']['RoiGroups']['photostimRoiGroups']
-    seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli'];
-    list_nums = seq.strip('[]').split();
-    seq = [int(num) for num in list_nums]
+    seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli']
+    seq_clean = seq.strip('[]')
+    
+    if ';' in seq_clean:
+        list_nums = seq_clean.split(';')
+    else:
+        list_nums = seq_clean.split()
+    
+    seq = [int(num) for num in list_nums if num]
+
+    
     seq = seq*40
     seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition'])-1;
     seq = seq[seqPos:]

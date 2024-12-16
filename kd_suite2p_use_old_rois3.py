@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI95/091124/']
-#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI88/090624/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI96/111924_2/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI96/111924/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -37,8 +37,8 @@ if 'old_folder' in locals():
     iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
 
 savefolders = dict()
-savefolders[0] = 'BCI';
-savefolders[1] = 'photostim';
+savefolders[0] = 'photostim_single';
+savefolders[1] = 'spont';
 savefolders[2] = 'spont';
 savefolders[3] = 'BCI_pre';
 #savefolders[2] = 'spont';
@@ -62,13 +62,13 @@ for index, base in enumerate(bases):
 ind = input('pick indices of bases for BCI, photostim, spont, photostim2 in that order')
 ind = np.fromstring(ind[1:-1], sep=',')
 #%%
-for ei in range(0,len(ind)):
+for ei in range(1,len(ind)):
     if ei == 1:
         old_folder = folder
     if 'old_folder' in locals():
-        stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
-        ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
-        iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
+        stat_old = np.load(old_folder + r'suite2p_photostim_single/' + r'/plane0/stat.npy',allow_pickle = 'True')
+        ops_old = np.load(old_folder + r'suite2p_photostim_single/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
+        iscell_old = np.load(old_folder +r'suite2p_photostim_single/' + r'/plane0/iscell.npy',allow_pickle = 'True')
 
     #base = {base for i, base in enumerate(bases) if str(i) in ind}
     base = bases[int(ind[ei])]
