@@ -20,7 +20,6 @@ for i in range(N):
     f[:,i] = f[:,i] - bl    
 tune = np.mean(f[40:100,:],axis = 0)
 
-#%%
 lens = 10;
 evts = []
 for ci in range(Ftrace.shape[0]):
@@ -31,14 +30,14 @@ for ci in range(Ftrace.shape[0]):
     evts.append(np.mean(a > (bl + noise)))
 plt.plot(tune,evts,'o',markerfacecolor = 'w')
 plt.show()
-#%%
+
 try:
     del str
 except:
     a=[]
 
 iscell = data['iscell']
-cns = np.where(((tune) < .0) & (np.asarray(evts) > .06) & (iscell[:,0]==1))[0]
+cns = np.where(((tune) > .2) & (np.asarray(evts) > .05) & (iscell[:,0]==1))[0]
 cns = cns[cns != cn]
 
 fig, axs = plt.subplots(12, 5, figsize=(5, 10))  # Adjust figsize as needed

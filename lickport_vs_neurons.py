@@ -46,17 +46,23 @@ for ti in range(pos.shape[1]):
         if vel[i,ti] == 1:
             pos[i,ti] = pos[i-1,ti] + 1; 
 #%%
+plt.figure(figsize=(2,4))
 t = np.arange(0,dt*517,dt)
 cn = data['conditioned_neuron'][0][0]
-trial = 22;
+trial = 65;
 plt.subplot(312)
 #plt.plot(np.nanmean(Faxons[39-offset:,0:,trial],axis=1)*1,'k')
 plt.subplot(312)
 plt.plot(t[0:500],vel[:500,trial],'k');
 plt.xlim((0,8))
+plt.ylabel('Lickport steps')
+
 plt.subplot(313)
 plt.plot(t[0:500],rew[:500,trial],'k');
+plt.xlabel('Time (s)')
 plt.xlim((0,8))
+plt.ylabel('Reward')
+
 plt.subplot(311)
 plt.plot(t,F[119-offset:619,[7,51,107],trial]/6-.04,linewidth=.6)
 plt.xlim((0,8))

@@ -533,3 +533,18 @@ plt.title('Day 2')
 cbar=plt.colorbar()  # Add a colorbar
 cbar.set_label('$\Delta$F/F', rotation=270, labelpad=15)  # Add label, rotate, and add padding
 plt.tight_layout()
+
+#%%
+t = np.arange(0,Fstim.shape[1]*dt,dt)
+plt.figure(figsize=(7,4))
+Fstim = np.load(folder +r'/suite2p_photostim_single/plane0/F.npy', allow_pickle=True)
+b = np.argsort(-np.corrcoef(Fstim[:,0:1000])[:,7])
+num = 10
+for i in range(num):
+    plt.subplot(num,1,i+1)
+    plt.plot(t[0:1000],Fstim[b[i],0:1000],'k',linewidth=.3)
+for ax in plt.gcf().get_axes():  # Get all axes from the current figure
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+plt.show()
+bci.roi_show_circles(folder,data,b[0:num],show_numbers=False)

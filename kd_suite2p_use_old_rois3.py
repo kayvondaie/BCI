@@ -24,21 +24,26 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI96/111924_2/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI96/111924/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI101/120924/pophys/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI101/120524/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
 #old_folder = r'D:/KD/BCI_data/BCI_2022/BCI45/050123/suite2p_BCI/'
 #old_folder = r'D:/KD/BCI_data/BCI_2022/BCI48/042623/suite2p_BCI/' 
 if 'old_folder' in locals():
-    stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
-    ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
-    iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
+    try:
+        stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
+        ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
+        iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
+    except:
+        stat_old = np.load(old_folder + r'suite2p_spont/' + r'/plane0/stat.npy',allow_pickle = 'True')
+        ops_old = np.load(old_folder + r'suite2p_spont/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
+        iscell_old = np.load(old_folder +r'suite2p_spont/' + r'/plane0/iscell.npy',allow_pickle = 'True')    
 
 savefolders = dict()
-savefolders[0] = 'photostim_single';
-savefolders[1] = 'spont';
+savefolders[0] = 'BCI';
+savefolders[1] = 'photostim_single';
 savefolders[2] = 'spont';
 savefolders[3] = 'BCI_pre';
 #savefolders[2] = 'spont';
@@ -59,16 +64,54 @@ base_counts = Counter(tif_bases)
 for index, base in enumerate(bases):
     count = base_counts.get(base, 0)  # Get the count for the base, default to 0 if not found
     print(f"{index}: {base} ({count} TIFFs)")
+
+
+# Assign save folders based on keywords
 ind = input('pick indices of bases for BCI, photostim, spont, photostim2 in that order')
-ind = np.fromstring(ind[1:-1], sep=',')
+ind = [int(x) for x in ind[1:-1].split(',')]
+
+# Initialize the savefolders dictionary
+savefolders = {}
+
+for i, index in enumerate(ind):
+    base_name = bases[index]
+    
+    # Determine save folder based on keywords
+    if 'neuron' in base_name.lower():
+        savefolders[i] = "BCI"
+    elif 'spont' in base_name.lower():
+        savefolders[i] = "spont"
+    elif 'photostim' in base_name.lower():
+        savefolders[i] = "photostim_single"
+    else:
+        savefolders[i] = "unknown"  # Default if no keyword matches
+
+# Reorganize savefolders and ind to put "BCI" first
+if "BCI" in savefolders.values():
+    bci_index = next(key for key, value in savefolders.items() if value == "BCI")
+    # Move the "BCI" index to the front
+    ind = [ind[bci_index]] + [v for i, v in enumerate(ind) if i != bci_index]
+    #savefolders = {0: savefolders[bci_index]} | {i + 1: savefolders[k] for i, k in enumerate(savefolders) if k != bci_index}
+
+# Print the save folder assignments
+print("Reorganized savefolders:")
+print(savefolders)
+print("Reorganized ind:")
+print(ind)
+
 #%%
-for ei in range(1,len(ind)):
+for ei in range(0,len(ind)):
     if ei == 1:
         old_folder = folder
     if 'old_folder' in locals():
-        stat_old = np.load(old_folder + r'suite2p_photostim_single/' + r'/plane0/stat.npy',allow_pickle = 'True')
-        ops_old = np.load(old_folder + r'suite2p_photostim_single/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
-        iscell_old = np.load(old_folder +r'suite2p_photostim_single/' + r'/plane0/iscell.npy',allow_pickle = 'True')
+        try:
+            stat_old = np.load(old_folder + r'suite2p_BCI/' + r'/plane0/stat.npy',allow_pickle = 'True')
+            ops_old = np.load(old_folder + r'suite2p_BCI/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
+            iscell_old = np.load(old_folder +r'suite2p_BCI/' + r'/plane0/iscell.npy',allow_pickle = 'True')
+        except:
+            stat_old = np.load(old_folder + r'suite2p_spont/' + r'/plane0/stat.npy',allow_pickle = 'True')
+            ops_old = np.load(old_folder + r'suite2p_spont/' +r'/plane0/ops.npy',allow_pickle = 'True').tolist()
+            iscell_old = np.load(old_folder +r'suite2p_spont/' + r'/plane0/iscell.npy',allow_pickle = 'True')    
 
     #base = {base for i, base in enumerate(bases) if str(i) in ind}
     base = bases[int(ind[ei])]
