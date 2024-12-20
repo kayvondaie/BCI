@@ -34,8 +34,8 @@ def main(folder):
     
     data['dat_file'] = folder + r'/suite2p_BCI/plane0/'
     slash_indices = [match.start() for match in re.finditer('/', folder)]
-    data['session'] = folder[slash_indices[-2]+1:slash_indices[-1]]
-    data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
     if os.path.isdir(folder +r'/suite2p_BCI/'):
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist() 
         dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);

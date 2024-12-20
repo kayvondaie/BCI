@@ -102,7 +102,6 @@ for si in range(len(switches)):
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
         avg_raw[i,si] = np.nanmean((fcn[:stp, i]))
         FCN[stp:,i] = np.nan
-#%%
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
 plt.rcParams['font.family'] = 'Arial'

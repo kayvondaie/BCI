@@ -37,7 +37,7 @@ except:
     a=[]
 
 iscell = data['iscell']
-cns = np.where(((tune) > .2) & (np.asarray(evts) > .05) & (iscell[:,0]==1))[0]
+cns = np.where(((tune) > .1) & (np.asarray(evts) > .06) & (iscell[:,0]==1))[0]
 cns = cns[cns != cn]
 
 fig, axs = plt.subplots(12, 5, figsize=(5, 10))  # Adjust figsize as needed
