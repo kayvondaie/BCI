@@ -12,9 +12,9 @@ def stim_amp(data):
     
     # Process photostimulation data
     for i in range(N):
-        favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[0:3, i]))/np.nanmean(favg_raw[0:3, i])
+        favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[5:9, i]))/np.nanmean(favg_raw[5:9, i])
     
-    amp = np.nanmean(favg[11:15, :, :], axis=0) - np.nanmean(favg[0:4, :, :], axis=0)
+    amp = np.nanmean(favg[16:20, :, :], axis=0) - np.nanmean(favg[5:9, :, :], axis=0)
     
     
     

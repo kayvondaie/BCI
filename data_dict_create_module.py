@@ -159,7 +159,7 @@ def main(folder):
     # np.save(photostim_file_path, photostim_data, allow_pickle=True)
     
     
-    keys_to_remove = ['Fstim_raw', 'favg', 'FstimRaw','Fstim']
+    keys_to_remove = ['Fstim_raw', 'favg', 'FstimRaw']
     
     # Check if 'photostim' exists in the data dictionary
     if 'photostim' in data:
@@ -616,8 +616,10 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     for i in range(len(g)-1):
         num.append(float(deg[g[i]+1:g[i+1]]))
     dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
-    degRange = np.max(num) - np.min(num)
-    pixPerDeg = dim[0]/degRange
+    degRange = (num[4] - num[0],num[1] - num[5])
+    #degRange = np.max(num) - np.min(num)
+    #pixPerDeg = dim/degRange
+    pixPerDeg = np.array(dim) / np.array(degRange)
 
     centroidX = []
     centroidY = []
@@ -642,6 +644,8 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     seq = seq[0:Fstim.shape[2]]
     for gi in range(len(photostim_groups)):        
         coordinates = photostim_groups[gi]['rois'][1]['scanfields']['slmPattern']
+        coordinates = np.array([[0, 0, 0, 0]])
+        coordinates = np.asarray(coordinates)
         if np.ndim(coordinates) == 1:
             coordinates = np.asarray(coordinates)
             coordinates = coordinates.reshape(1,-1)
@@ -654,8 +658,8 @@ def stimDist_single_cell(ops,F,siHeader,stat):
         stimPos = np.zeros(np.shape(xy))
         galvoPos = np.zeros(np.shape(xy))
         for i in range(np.shape(xy)[0]):
-            stimPos[i,:] = np.array(xy[i,:]-num[0])*pixPerDeg
-            galvoPos[i,:] = np.array(xygalvo[i,:]-num[0])*pixPerDeg
+            stimPos[i,:] = np.array(xy[i,:]-[num[-1], num[0]])*pixPerDeg
+            galvoPos[i,:] = np.array(xygalvo[i,:]-[num[-1], num[0]])*pixPerDeg
         sd = np.zeros([np.shape(xy)[0],favg.shape[1]])        
         for i in range(np.shape(xy)[0]):
             for j in range(favg.shape[1]):
