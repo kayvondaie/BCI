@@ -23,6 +23,7 @@ for epoch_i in range(2):
     
     N = favg.shape[2]
     N = 10
+    offset = 0
     # Create a figure and axes for a 5x5 grid
     fig, axes = plt.subplots(N,N, figsize=(10, 10))
     stim_cells = np.argmin(stimDist, axis=0)
@@ -35,11 +36,11 @@ for epoch_i in range(2):
             ax = axes[gi, ci]
             if ci == gi:
                 col = 'r'
-                direct.append(favg[0:20,stim_cells[ci+10],gi+10])
+                direct.append(favg[0:20,stim_cells[ci+offset],gi+offset])
             else:
                 col = 'k'
-                indirect.append(favg[0:20,stim_cells[ci+10],gi+10])
-            ax.plot(favg[0:20,stim_cells[ci+10],gi+10],color = col)
+                indirect.append(favg[0:20,stim_cells[ci+offset],gi+offset])
+            ax.plot(favg[0:20,stim_cells[ci+offset],gi+offset],color = col)
             if ci != gi:
                 ax.set_ylim(-.1,.1)
             ax.set_xticks([])
@@ -119,7 +120,7 @@ for gi in range(20):
     
     # Match the number of trials in `a` to those in `a2`
     ind_a = np.argsort(a)[:-6]  # Remove the largest responses from `a`
-    ind_a2 = np.argsort(a2)[7:]
+    ind_a2 = np.argsort(a2)[6:]
     
     # Plot the average responses
     round1.append(np.nanmean(k[0:25, stim_cells[gi], ind_a], axis=1))
@@ -195,3 +196,23 @@ plt.plot(np.nanmean(direct2,axis=0))
 plt.subplot(212)
 plt.plot(np.nanmean(indirect,axis=0))
 plt.plot(np.nanmean(indirect2,axis=0))
+#%%
+fig = plt.figure(figsize=(10, 5))
+amp = np.nanmean(favg_new[6:14, :, :], axis=0) - np.nanmean(favg_new[0:4, :, :], axis=0)
+amp2 = np.nanmean(favg_new2[6:14, :, :], axis=0) - np.nanmean(favg_new2[0:4, :, :], axis=0)
+scl = .15
+offset = 0
+w1 = amp[stim_cells[0+offset:10+offset],0+offset:10+offset]
+w2 = amp2[stim_cells[0+offset:10+offset],0+offset:10+offset]
+plt.subplot(121)
+plt.imshow(amp[stim_cells[0+offset:10+offset],0+offset:10+offset],vmin=-scl,vmax=scl,cmap='seismic', aspect='auto')
+plt.xlabel('Pre')
+plt.ylabel('Post')
+plt.subplot(122)
+plt.imshow(amp2[stim_cells[0+offset:10+offset],0+offset:10+offset],vmin=-scl,vmax=scl,cmap='seismic', aspect='auto')
+plt.xlabel('Pre')
+plt.tight_layout()
+
+#%%
+Dw = w2 - w1
+plt.bar(['Upper Triangle', 'Lower Triangle'], [np.mean(Dw[np.triu_indices(10, k=1)]), np.mean(Dw[np.tril_indices(10, k=-1)])], color=['blue', 'red'])
