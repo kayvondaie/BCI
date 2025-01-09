@@ -590,7 +590,7 @@ def stimDist_single_cell(ops,F,siHeader,stat):
 
     F[:,trip] = np.nan
     numTrl = len(ops['frames_per_file']);
-    timepts = 55*round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])/16);
+    timepts = 69*round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])/16);
     numCls = F.shape[0]
     Fstim = np.full((timepts,numCls,numTrl),np.nan)
     Fstim_raw = np.full((timepts,numCls,numTrl),np.nan)
