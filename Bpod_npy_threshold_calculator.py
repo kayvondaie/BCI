@@ -144,7 +144,7 @@ F = data['Fraw'];
 cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 20,vmax=290)
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 20,vmax=150)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)

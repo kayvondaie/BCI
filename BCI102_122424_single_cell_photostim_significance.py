@@ -4,7 +4,8 @@ Created on Tue Jan  7 10:37:52 2025
 
 @author: kayvon.daie
 """
-
+siHeader = np.load(folder + r'/suite2p_photostim_single/plane0/siHeader.npy', allow_pickle=True).tolist() 
+dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
 favg_raw = data['photostim']['favg_raw']
 favg = np.zeros(favg_raw.shape)
 umPerPix = 1200/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
@@ -51,7 +52,7 @@ frac_connect = np.zeros((len(bins)-1,G))
 for gi in range(G):
     Fstim = data['photostim']['Fstim'];
     seq = data['photostim']['seq']-1
-    ind = np.where(seq == gi)[0]
+    ind = np.where(seq == gi)[0][::]
     post = np.nanmean(Fstim[24:30, :, ind], axis=0) 
     pre  = np.nanmean(Fstim[10:19, :, ind], axis=0)
     t_stat, p_value = ttest_ind(post, pre, axis=1)

@@ -478,8 +478,8 @@ def load_data_dict(folder, subset=None):
     
     # Extract session and mouse from folder path
     slash_indices = [match.start() for match in re.finditer('/', folder)]
-    session = folder[slash_indices[-2]+1:slash_indices[-1]]
-    mouse = folder[slash_indices[-3]+1:slash_indices[-2]]
+    session = folder[slash_indices[-3]+1:slash_indices[-2]]
+    mouse = folder[slash_indices[-4]+1:slash_indices[-3]]
     
     # Construct file path
     file_path = folder + f"data_{mouse}_{session}.npy"

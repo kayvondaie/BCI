@@ -298,8 +298,17 @@ def find_conditioned_neurons(siHeader,stat):
     dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
     degRange = np.max(num) - np.min(num)
     pixPerDeg = dim[0]/degRange
+    
+    
+    dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+    degRange = (num[4] - num[0],num[1] - num[5])
+    #degRange = np.max(num) - np.min(num)
+    #pixPerDeg = dim/degRange
+    pixPerDeg = np.array(dim) / np.array(degRange)
 
-    cnPosPix = np.array(np.array(cnPos)-num[0])*pixPerDeg
+    
+
+    cnPosPix = np.array(np.array(cnPos)-[num[-1], num[0]])*pixPerDeg
 
     centroidX = []
     centroidY = []
@@ -718,6 +727,8 @@ def process_photostim(folder, subfolder, data, index):
         data (dict): Data dictionary to populate.
         index (int): Index of the photostim subfolder.
     """
+    import gc  # To force garbage collection
+
     stat = np.load(folder + subfolder + 'stat.npy', allow_pickle=True)
     Ftrace = np.load(folder + subfolder + 'F.npy', allow_pickle=True)
     ops = np.load(folder + subfolder + 'ops.npy', allow_pickle=True).tolist()
@@ -731,11 +742,22 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
     data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat)
 
-    # Construct the .npy filename with 'photostim', 'photostim2', etc.
+    # Remove redundant keys
+    keys_to_remove = ['Fstim_raw']
+    for key in keys_to_remove:
+        if key in data[key_name]:
+            del data[key_name][key]
+            print(f"Removed key '{key}' from {key_name}")
+
+    # Save the processed photostim data to file
     npy_filename = f"data_{key_name}.npy"
     npy_file_path = os.path.join(folder, npy_filename)
 
-    # Save the processed photostim data
     with open(npy_file_path, 'wb') as f:
         pickle.dump(data[key_name], f, protocol=4)
+
     print(f"Photostim data for {key_name} saved successfully as {npy_filename}!")
+
+    # Free up memory
+    del stat, Ftrace, ops, siHeader
+    gc.collect()
