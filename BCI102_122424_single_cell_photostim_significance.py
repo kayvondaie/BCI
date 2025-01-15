@@ -8,7 +8,7 @@ siHeader = np.load(folder + r'/suite2p_photostim_single/plane0/siHeader.npy', al
 dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
 favg_raw = data['photostim']['favg_raw']
 favg = np.zeros(favg_raw.shape)
-umPerPix = 1200/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+umPerPix = 1000/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
 stimDist = data['photostim']['stimDist']*umPerPix
 #bl = np.percentile(Ftrace, 50, axis=1)
 N = stimDist.shape[0]
