@@ -8,12 +8,15 @@ Created on Tue Jan 14 09:11:41 2025
 direct_cells = []
 indirect_cells = []
 AMP = []
+siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
+umPerPix = 1000/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
 for epoch_i in range(2):
     if epoch_i == 0:
-        stimDist = data['photostim']['stimDist']
+        stimDist = data['photostim']['stimDist']*umPerPix 
+
         favg_raw = data['photostim']['favg_raw']
     else:
-        stimDist = data['photostim2']['stimDist']
+        stimDist = data['photostim2']['stimDist']*umPerPix 
         favg_raw = data['photostim2']['favg_raw']
     favg = favg_raw*0
     for i in range(favg.shape[1]):
@@ -65,7 +68,7 @@ for epoch_i in range(2):
     direct_cells.append(np.nanmean(direct,axis=0))
     indirect_cells.append(np.nanmean(indirect,axis=0))
 #%%
-stimDist = data['photostim']['stimDist']
+stimDist = data['photostim']['stimDist']*umPerPix
 plt.figure(figsize=(8,4))  # Set figure size to 10x10 inches
 df = data['df_closedloop']
 cc = np.corrcoef(df)

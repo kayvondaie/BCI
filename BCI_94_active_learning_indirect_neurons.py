@@ -113,6 +113,8 @@ for bi in range(len(bins)-1):
 plt.bar(bins[0:3],frac_e[0:3],color=[.7,.7,.7],width=9)
 plt.bar(bins[3:],frac_e[3:],color='k',width=9)
 plt.bar(bins[:],-frac_i[:],color='w',width=9,edgecolor='k')
+plt.xlabel('Distance from photostim (um)')
+plt.ylabel('Number of responsive neurons (z-score > 1)')
 
         
     
