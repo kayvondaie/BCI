@@ -125,8 +125,8 @@ for i in range(favg.shape[1]):      # 0..2066
         trace_keep = favg_keep[:, i, j]
         favg_new[:, i, j] = np.interp(time_full, time_keep, trace_keep)
 
-num = 200;
-p_value = np.zeros((num,num))
+num = 500;
+p_value = np.ones((num, num)) * np.nan
 dist = np.zeros((num,num))
 w = np.zeros((num,num))
 num_grps = np.zeros((num,num))
@@ -148,16 +148,16 @@ for post in range(num):
                 dy = (np.mean(stat[pre]['ypix']) - np.mean(stat[post]['ypix']))**2
                 dist[post,pre] = np.sqrt(dx+dy)
                 w[post,pre] = np.nanmean(amp[post,grps[0]])
-                if w[post,pre] > .2:
-                    plt.subplot(121)
-                    plt.plot(np.nanmean(favg_new[0:16,pre,grps[0]],axis=1))
-                    plt.subplot(122)
-                    plt.plot(np.nanmean(favg_new[0:16,post,grps[0]],axis=1))
-                    plt.show()                    
+                # if w[post,pre] > .4:
+                #     plt.subplot(121)
+                #     plt.plot(np.nanmean(favg_new[0:16,pre,grps[0]],axis=1))
+                #     plt.subplot(122)
+                #     plt.plot(np.nanmean(favg_new[0:16,post,grps[0]],axis=1))
+                #     plt.show()                    
 plt.imshow(w,cmap='seismic')                       
 #%%
 bins = np.concatenate((np.arange(0, 100, 10), np.arange(100, 300, 25)))
-bins = np.arange(0, 500, 20)
+bins = np.arange(20, 500, 10)
 
 umPerPix = 1000/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
 
@@ -171,13 +171,25 @@ for bi in range(len(bins)-1):
     frac_i[bi] = np.nanmean(y[ind]<-3)
 
 #plt.bar(bins[0:3],frac_e[0:3],color=[.7,.7,.7],width=9)
-plt.bar(bins[:],100*frac_e[:],color='k',width=9)
+plt.bar(bins[:],100*frac_e[:],color='k',width=15)
 #plt.bar(bins[:],-frac_i[:],color='w',width=9,edgecolor='k')
 plt.xlabel('Distance from photostim (um)')
-plt.ylabel('Number of responsive neurons (z-score > 1)')
+plt.ylabel('% of responsive neurons (p < 0.05)')
+#%%
+plt.figure(figsize=(6,3))
+plt.subplot(121)
+plt.imshow(w.T,cmap='seismic',vmin=-.5,vmax=.5)
+plt.xlabel('Pre.')
+plt.ylabel('Post')
 
-        
-    
+plt.subplot(122)
+x = dist.flatten();y = w.flatten();z = p_value.flatten()
+ind = np.where(np.isnan(z)==0)[0]        
+pf.mean_bin_plot(x[ind],y[ind],117,1,1,'k');
+plt.plot([0,700],[0,0],'k:')
+plt.xlabel('$Dist_{i,j}$')
+plt.ylabel('$W_{i,j}$')
+plt.tight_layout()
 
 
 
