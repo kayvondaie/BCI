@@ -4,34 +4,6 @@ Created on Tue Jan 14 09:11:41 2025
 
 @author: kayvon.daie
 """
-
-#%%
-import os
-import h5py
-import numpy as np
-
-photostim_keys = ['stimDist', 'favg_raw']
-bci_keys = ['df_closedloop','F','mouse','session']
-data = dict()
-data['photostim'] = dict()
-data['photostim2'] = dict()
-for i in range(len(photostim_keys)):
-    with h5py.File(os.path.join(folder, "data_photostim.h5"), "r") as f:
-        data['photostim'][photostim_keys[i]] = f[photostim_keys[i]][:]
-    with h5py.File(os.path.join(folder, "data_photostim2.h5"), "r") as f:
-        data['photostim2'][photostim_keys[i]] = f[photostim_keys[i]][:]           
-
-for i in range(len(bci_keys)):
-    with h5py.File(os.path.join(folder, "data_main.h5"), "r") as f:
-        try:
-            data[bci_keys[i]] = f[bci_keys[i]][:]
-        except:
-            data[bci_keys[i]] = f[bci_keys[i]][()]
-            if isinstance(data[bci_keys[i]], bytes):
-                data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
-
-
-
 #%%
 direct_cells = []
 indirect_cells = []
@@ -96,14 +68,13 @@ for epoch_i in range(2):
     direct_cells.append(np.nanmean(direct,axis=0))
     indirect_cells.append(np.nanmean(indirect,axis=0))
 #%%
-import plotting_functions as pf
 stimDist = data['photostim']['stimDist']*umPerPix
 plt.figure(figsize=(8,4))  # Set figure size to 10x10 inches
 df = data['df_closedloop']
 cc = np.corrcoef(df)
 F = data['F']
-ko = np.nanmean(F[120:200,:,0:10],axis=0)
-k = np.nanmean(F[120:240,:,0:],axis=0)
+ko = np.nanmean(F[0:,:,0:10],axis=0)
+k = np.nanmean(F[0:,:,10:40],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 ei = 1;
@@ -111,11 +82,11 @@ X = []
 Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
-    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .5) * ((AMP[1][:,gi]> .5)))[0]
+    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .5) & (AMP[1][:,gi]> .5))[0]
     #plt.plot(favg[0:80,cl,gi])
     
-    x = np.nanmean(cc[cl,:],axis=0)    
-    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+    x = np.nanmean(cc[cl,:]-cco[cl,:],axis=0)    
+    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<10000))
     y = AMP[1][nontarg,gi]
     yo = AMP[0][nontarg,gi]
     #plt.scatter(x[nontarg],amp[nontarg,gi])
@@ -140,19 +111,19 @@ Y = np.concatenate(Y,axis=1)
 Yo = np.concatenate(Yo,axis=1)
 plt.subplot(221)
 pf.mean_bin_plot(X,Yo,5,1,1,'k')
-plt.xlabel('Pre-post correlation')
+plt.xlabel('$\Delta$Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('Before learning')
 
 plt.subplot(223)
 pf.mean_bin_plot(X,Y,5,1,1,'k')
-plt.xlabel('Pre-post correlation')
+plt.xlabel('$\Delta$Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('After learning')
 
 plt.subplot(122)
-pf.mean_bin_plot(X,Y-Yo,9,1,1,'k')
-plt.xlabel('Pre-post correlation')
+pf.mean_bin_plot(X,Y-Yo,5,1,1,'k')
+plt.xlabel('$\Delta$Pre-post correlation')
 plt.ylabel('$\Delta W_{i,j}$')
 plt.tight_layout()
 plt.title(data['mouse'] + ' ' + data['session'])
@@ -163,7 +134,7 @@ num_targets = stimDist.shape[1]
 nearest_amp = amp[nearest_idx, np.arange(num_targets)]
 for ci in range(favg.shape[1]):
     ind = np.where((stimDist[ci,:]>30) & (nearest_amp>.5))[0]
-    x = cc[ind,ci]-cco[ind,ci]
+    x = cco[ind,ci]
     y = amp[ci,ind]
     y = y[~np.isnan(x)]
     x = x[~np.isnan(x)]    

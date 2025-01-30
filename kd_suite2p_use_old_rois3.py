@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI102/122424/pophys/']
-#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI102/121324/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI88/012725/pophys/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI88/012425/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -44,8 +44,9 @@ if 'old_folder' in locals():
 savefolders = dict()
 savefolders[0] = 'BCI';
 savefolders[1] = 'photostim_single';
-savefolders[2] = 'spont';
-savefolders[3] = 'BCI_pre';
+savefolders[2] = 'photostim_single2';
+savefolders[3] = 'spont_pre';
+savefolders[4] = 'spont_post';
 #savefolders[2] = 'spont';
 #savefolders[2] = 'photostim2';
 
@@ -193,7 +194,7 @@ for ei in range(0,len(ind)):
     siHeader['savefolders'] = savefolders
     np.save(folder + 'suite2p_' + savefolders[ei] + r'/plane0/siHeader.npy',siHeader)
 
-import data_dict_create_module as ddc
+import data_dict_create_module_test as ddc
 data = ddc.main(folder)
 if data['mouse'] == 'BCI69':
     bci69_folder = 'H:/My Drive/Learning rules/BCI_data/BCI_69/'

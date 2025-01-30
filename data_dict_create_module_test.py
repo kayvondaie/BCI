@@ -30,16 +30,23 @@ def main(folder, index=None):
     
     # BCI data
     if os.path.isdir(folder +r'/suite2p_BCI/'):
+        iscell = np.load(folder + r'/suite2p_BCI/plane0/iscell.npy', allow_pickle=True)
         stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)        
         Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
         ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
-        iscell = np.load(folder + r'/suite2p_BCI/plane0/iscell.npy', allow_pickle=True)
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
     elif os.path.isdir(folder +r'/suite2p_BCI_green/'):
+        iscell = np.load(folder + r'/suite2p_BCI_green/plane0/iscell.npy', allow_pickle=True)
         stat = np.load(folder + r'/suite2p_BCI_green/plane0/stat.npy', allow_pickle=True)        
         Ftrace = np.load(folder +r'/suite2p_BCI_green/plane0/F.npy', allow_pickle=True)
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
         ops = np.load(folder + r'/suite2p_BCI_green/plane0/ops.npy', allow_pickle=True).tolist()
-        iscell = np.load(folder + r'/suite2p_BCI_green/plane0/iscell.npy', allow_pickle=True)
+        
         siHeader = np.load(folder + r'/suite2p_BCI_green/plane0/siHeader.npy', allow_pickle=True).tolist()
     
     data['dat_file'] = folder + r'/suite2p_BCI/plane0/'
@@ -104,16 +111,25 @@ def main(folder, index=None):
     
     # photostim data
     if os.path.isdir(folder +r'/suite2p_photostim/'):
+        iscell = np.load(folder + r'/suite2p_photostim/plane0/iscell.npy', allow_pickle=True)
         stat = np.load(folder + r'/suite2p_photostim/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim/plane0/F.npy', allow_pickle=True)
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
         ops = np.load(folder + r'/suite2p_photostim/plane0/ops.npy', allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_photostim/plane0/siHeader.npy', allow_pickle=True).tolist()    
         data['photostim'] = dict()
         data['photostim']['Fstim'], data['photostim']['seq'], data['photostim']['favg'], data['photostim']['stimDist'], data['photostim']['stimPosition'], data['photostim']['centroidX'], data['photostim']['centroidY'], data['photostim']['slmDist'],data['photostim']['stimID'],data['photostim']['Fstim_raw'],data['photostim']['favg_raw'] = create_photostim_Fstim(ops, Ftrace,siHeader,stat)
         #data['photostim']['FstimRaw'] = Ftrace
     if os.path.isdir(folder +r'/suite2p_photostim2/'):
-        stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
+        iscell = np.load(folder + r'/suite2p_photostim2/plane0/iscell.npy', allow_pickle=True)
+        stat = np.load(folder + r'/suite2p_photostim2/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim2/plane0/F.npy', allow_pickle=True)
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
+        
         ops = np.load(folder + r'/suite2p_photostim2/plane0/ops.npy', allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_photostim2/plane0/siHeader.npy', allow_pickle=True).tolist()    
         data['photostim2'] = dict()
@@ -143,6 +159,36 @@ def main(folder, index=None):
     if os.path.isdir(folder +r'/suite2p_spont/'):
         data['spont'] = np.load(folder +r'/suite2p_spont/plane0/F.npy', allow_pickle=True)
     
+    if os.path.isdir(folder +r'/suite2p_spont/'):
+        # Load iscell, stat, F
+        iscell_spont = np.load(folder + r'/suite2p_spont/plane0/iscell.npy', allow_pickle=True)
+        stat_spont   = np.load(folder + r'/suite2p_spont/plane0/stat.npy',   allow_pickle=True)
+        F_spont      = np.load(folder + r'/suite2p_spont/plane0/F.npy',      allow_pickle=True)
+    
+        # Subselect real cells
+        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
+        F_spont = F_spont[cells_spont, :]
+        stat_spont = stat_spont[cells_spont]
+    
+        # Store in data dict
+        data['spont'] = F_spont
+        
+        
+    if os.path.isdir(folder +r'/suite2p_spont2/'):
+        # Load iscell, stat, F
+        iscell_spont = np.load(folder + r'/suite2p_spont2/plane0/iscell.npy', allow_pickle=True)
+        stat_spont   = np.load(folder + r'/suite2p_spont2/plane0/stat.npy',   allow_pickle=True)
+        F_spont      = np.load(folder + r'/suite2p_spont2/plane0/F.npy',      allow_pickle=True)
+    
+        # Subselect real cells
+        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
+        F_spont = F_spont[cells_spont, :]
+        stat_spont = stat_spont[cells_spont]
+    
+        # Store in data dict
+        data['spont2'] = F_spont
+        
+
     #behavioral data
     behav_folder = 'I:/My Drive/Learning rules/BCI_data/behavior//' + 'BCI_' + data['mouse'][3:]
     behav_file = behav_folder + '/' + data['session'] + r'-bpod_zaber.npy';
@@ -169,50 +215,51 @@ def main(folder, index=None):
     base_file_path = os.path.join(folder, f"data_{data['mouse']}_{data['session']}")
     data_file_path = base_file_path + ".npy"
     photostim_file_path = base_file_path + "_photostim.npy"
+ 
+    # Identify photostim keys
+    photostim_keys = [k for k in data.keys() if k.startswith('photostim')]
+
+    # 1) Save each photostim key's sub-dict in separate files
     
-    # Extract 'photostim' and remove it from the main dictionary
-    #photostim_data = data.pop('photostim')
+    for pkey in photostim_keys:
+        # e.g., pkey = 'photostim', 'photostim2', etc.
+        
+        # Construct filenames
+        npy_filename = f"data_{pkey}.npy"
+        npy_file_path = os.path.join(folder, npy_filename)
+        h5_filename = f"data_{pkey}.h5"
+        h5_file_path = os.path.join(folder, h5_filename)
     
-    # Save the reduced 'data' dictionary
- #   np.save(data_file_path, data, allow_pickle=True)
+        # Save as pickle .npy
+        with open(npy_file_path, 'wb') as f:
+            pickle.dump(data[pkey], f, protocol=4)
+        print(f"[{pkey}] saved as pickle: {npy_file_path}")
     
-    # Save the 'photostim' data separately
-    # np.save(photostim_file_path, photostim_data, allow_pickle=True)
+        # Save as HDF5
+        save_dict_to_hdf5(data[pkey], h5_file_path)
+        print(f"[{pkey}] saved as HDF5:   {h5_file_path}")
     
+    # 2) Save everything else in `data` except photostim keys
+    non_photostim_dict = {k: v for k, v in data.items() if k not in photostim_keys}
     
-    keys_to_remove = ['Fstim_raw', 'favg', 'FstimRaw']
+    if len(non_photostim_dict) > 0:
+        # Optionally name these "data_main.*" or something else
+        main_npy_filename = "data_main.npy"
+        main_npy_path = os.path.join(folder, main_npy_filename)
+        main_h5_filename = "data_main.h5"
+        main_h5_path = os.path.join(folder, main_h5_filename)
     
-    # Check if 'photostim' exists in the data dictionary
-    if 'photostim' in data:
-        # Remove only the keys that exist in 'photostim'
-        for key in keys_to_remove:
-            if key in data['photostim']:
-                del data['photostim'][key]
-        print("Redundant keys removed from data['photostim']!")
+        with open(main_npy_path, 'wb') as f:
+            pickle.dump(non_photostim_dict, f, protocol=4)
+        print(f"[MAIN] Non-photostim data saved as pickle: {main_npy_path}")
+    
+        save_dict_to_hdf5(non_photostim_dict, main_h5_path)
+        print(f"[MAIN] Non-photostim data saved as HDF5:   {main_h5_path}")
     else:
-        print("'photostim' not found in data.")
-
-    import pickle
-
-    # Save the dictionary as a .npy file using pickle protocol 4
-    # Define `key_name` for saving the data
-    if index is None or index == 1:
-        key_name = 'photostim'
-    else:
-        key_name = f'photostim{index}'
-    
-    # Construct the .npy filename with 'photostim', 'photostim2', etc.
-    npy_filename = f"data_{key_name}.npy"
-    npy_file_path = os.path.join(folder, npy_filename)
-    
-    # Save the processed photostim data
-    with open(npy_file_path, 'wb') as f:
-        pickle.dump(data[key_name], f, protocol=4)
+        print("No non-photostim data found; skipping main data save.")
+    # --------------------------------------------------------------------
 
 
-    
-    print("Dictionary saved successfully as .npy using pickle!")
-    
 
     
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy', data, allow_pickle=True, pickle_protocol=4)
@@ -728,9 +775,14 @@ def process_photostim(folder, subfolder, data, index):
         index (int): Index of the photostim subfolder.
     """
     import gc  # To force garbage collection
-
+    
+    iscell = np.load(folder + subfolder + 'iscell.npy', allow_pickle=True)
     stat = np.load(folder + subfolder + 'stat.npy', allow_pickle=True)
     Ftrace = np.load(folder + subfolder + 'F.npy', allow_pickle=True)
+    cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+    Ftrace = Ftrace[cells,:]
+    stat = stat[cells]
+    
     ops = np.load(folder + subfolder + 'ops.npy', allow_pickle=True).tolist()
     siHeader = np.load(folder + subfolder + 'siHeader.npy', allow_pickle=True).tolist()
 
@@ -761,3 +813,59 @@ def process_photostim(folder, subfolder, data, index):
     # Free up memory
     del stat, Ftrace, ops, siHeader
     gc.collect()
+
+
+
+import h5py
+def save_dict_to_hdf5(data_dict, hdf5_file_path):
+    """
+    Recursively save a Python dictionary to an HDF5 file.
+    Keys that map to sub-dictionaries become HDF5 Groups,
+    and keys mapping to array-like objects become Datasets.
+    Anything that cannot be directly converted is stored as string.
+    """
+    def recursively_save_dict_contents_to_group(h5file, path, dic):
+        for key, item in dic.items():
+            key_clean = str(key)  # ensure the key is a string
+            if isinstance(item, dict):
+                # Create a subgroup for this sub-dictionary
+                subgroup = h5file.create_group(f"{path}/{key_clean}")
+                recursively_save_dict_contents_to_group(h5file, f"{path}/{key_clean}", item)
+            else:
+                # Try creating a dataset
+                try:
+                    h5file.create_dataset(f"{path}/{key_clean}", data=item)
+                except TypeError:
+                    # If it's not array-like, store as string
+                    h5file.create_dataset(f"{path}/{key_clean}", data=str(item))
+
+    with h5py.File(hdf5_file_path, 'w') as h5file:
+        recursively_save_dict_contents_to_group(h5file, '', data_dict)
+
+
+def load_hdf5(folder,bci_keys,photostim_keys):
+    import os
+    import h5py
+    import numpy as np
+
+#    photostim_keys = ['stimDist', 'favg_raw']
+#    bci_keys = ['df_closedloop','F','mouse','session']
+    data = dict()
+    data['photostim'] = dict()
+    data['photostim2'] = dict()
+    for i in range(len(photostim_keys)):
+        with h5py.File(os.path.join(folder, "data_photostim.h5"), "r") as f:
+            data['photostim'][photostim_keys[i]] = f[photostim_keys[i]][:]
+        with h5py.File(os.path.join(folder, "data_photostim2.h5"), "r") as f:
+            data['photostim2'][photostim_keys[i]] = f[photostim_keys[i]][:]           
+
+    for i in range(len(bci_keys)):
+        with h5py.File(os.path.join(folder, "data_main.h5"), "r") as f:
+            try:
+                data[bci_keys[i]] = f[bci_keys[i]][:]
+            except:
+                data[bci_keys[i]] = f[bci_keys[i]][()]
+                if isinstance(data[bci_keys[i]], bytes):
+                    data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
+    return data
+

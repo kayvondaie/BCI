@@ -9,6 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 mpl.rcParams['figure.dpi'] = 300
 
+
 ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
 from scipy.interpolate import interp1d
 len_files = ops['frames_per_file'];
@@ -49,6 +50,7 @@ switchesu = np.where((k!=0) & (~np.isnan(k)))[0]
 k = np.diff(BCI_thresholds[0,:]);
 switchesl = np.where((k!=0) & (~np.isnan(k)))[0]
 switches = np.unique(np.concatenate((switchesu, switchesl)))
+switches = switchesu
 switches  = np.concatenate(([0],switches))
 avg = np.empty((len(len_files) - 1,len(switches)))
 avg_raw = np.empty((len(len_files) - 1,len(switches)))
@@ -144,11 +146,11 @@ F = data['Fraw'];
 cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 20,vmax=150)
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=550)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
-plt.xticks([0,200], ['0', '10'])
+plt.xticks([120,720], ['0', '10'])
 plt.xlabel('Time from trial start (s)')
 plt.ylabel('Trial #')
 plt.tight_layout()
