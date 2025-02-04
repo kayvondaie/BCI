@@ -71,7 +71,7 @@ for si in range(len(switches)):
     trl_frm = np.zeros(len(t),)
     thr_time = np.full((len(t),2),np.nan);
     # Loop through the trials
-    for i in range(len(rew) - 2):
+    for i in range(len(rew) - 1):
         strts[i] = strt  # Literal translation of strts(i) = strt
         ind = np.arange(strt, strt + len_files[i], dtype=int)  # Ensure ind is an array of integers
         ind = np.clip(ind, 0, len(roi_interp) - 1)
@@ -114,7 +114,7 @@ dummy_hit = np.zeros(len(rew),)
 dummy_rt = np.zeros(len(switches),)
 upr = np.unique(BCI_thresholds[1,:])[0:-1]
 lwr = np.unique(BCI_thresholds[0,:])[0]
-for si in range(len(switches)):
+for si in range(len(switches)-1):
     ind = np.arange(epochs[si], epochs[si+1])
     min_activity = float(siHeader['metadata']['hRoiManager']['linesPerFrame'])/800*.35
     dummy_hit[ind] = np.nanmean(avg[0:10,si] > min_activity)
@@ -146,7 +146,7 @@ F = data['Fraw'];
 cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=550)
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=450)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)

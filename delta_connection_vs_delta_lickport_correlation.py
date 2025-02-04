@@ -1,23 +1,32 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jan 31 14:50:06 2025
 
-import session_counting
-import data_dict_create_module_test as ddct
+@author: kayvon.daie
+"""
 
-list_of_dirs = session_counting.counter()
-si = 29;
-folder = str(list_of_dirs[si])
-mouse = 'BCI106'
-session = '013125'
+
+mouse = 'BCI105'
+session = '012925'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
-
-photostim_keys = ['stimDist', 'favg_raw']
-bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron']
-data = ddct.load_hdf5(folder,bci_keys,photostim_keys )
-
-
-iscell = np.load(folder + r'/suite2p_BCI/plane0/iscell.npy', allow_pickle=True);
-cells = np.where(np.asarray(iscell)[:,0]==1)[0]
-spont_pre = np.load(folder +r'/suite2p_spont_pre/plane0/F.npy', allow_pickle=True)[cells,:]
-spont_post = np.load(folder +r'/suite2p_spont_post/plane0/F.npy', allow_pickle=True)[cells,:]
+data = np.load(folder + 'data_main.npy',allow_pickle=True)
+data['photostim'] = np.load(folder + 'data_photostim.npy',allow_pickle=True)
+data['photostim2'] = np.load(folder + 'data_photostim2.npy',allow_pickle=True)
+#%%
+F = data['F']
+trl = F.shape[2]
+tsta = np.arange(0,12,data['dt_si'])
+tsta=tsta-tsta[120]
+k = np.zeros((F.shape[1],trl))
+for ti in range(trl):
+    steps = data['step_time'][ti]
+    indices = np.searchsorted(tsta, steps)
+    indices = indices[indices<699]
+    k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
+k[np.isnan(k)==1]=0
+ccn = np.corrcoef(k[:,10:])
+cco = np.corrcoef(k[:,0:10])
+cc = np.corrcoef(k[:,:])
 #%% 
 AMP = []
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
@@ -50,21 +59,6 @@ for epoch_i in range(2):
     plt.plot(np.nanmean(np.nanmean(favg[0:40,:,:],axis=2),axis=1))
 #%%
 import plotting_functions as pf
-
-
-
-stimDist = data['photostim']['stimDist']*umPerPix
-plt.figure(figsize=(8,4))  # Set figure size to 10x10 inches
-df = data['df_closedloop']
-cc = np.corrcoef(df)
-F = data['F']
-ko = np.nanmean(F[120:360,:,0:10],axis=0)
-kn = np.nanmean(F[120:360,:,10:],axis=0)
-k = np.nanmean(F[:,:,0:],axis=0)
-cc = np.corrcoef(k)
-cco = np.corrcoef(ko)
-ccn = np.corrcoef(kn)
-
 
 ei = 1;
 X = []

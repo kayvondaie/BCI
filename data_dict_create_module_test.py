@@ -635,7 +635,8 @@ def siHeader_get(folder):
  
     return siHeader
 
-def stimDist_single_cell(ops,F,siHeader,stat):
+def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
+    
     
     trip = np.std(F,axis=0)
     trip = np.where(trip<10)[0]
@@ -671,6 +672,10 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition'])-1;
     seq = seq[seqPos:]
     seq = np.asarray(seq)
+    if offset<0:
+        seq = seq[offset:]
+    elif offset>0:
+        seq = seq[:-offset]
     
     stimID = np.zeros((F.shape[1],))
     for ti in range(numTrl):
@@ -793,6 +798,15 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
     data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat)
+    
+    # offset = seq_offset(data,key_name)
+    # if offset != 0:
+    #     print('offset detected for' + key_name)
+    #     data[key_name] = dict()
+    #     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
+    #     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
+    #     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
+    #     data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
 
     # Remove redundant keys
     keys_to_remove = ['Fstim_raw']
@@ -868,4 +882,33 @@ def load_hdf5(folder,bci_keys,photostim_keys):
                 if isinstance(data[bci_keys[i]], bytes):
                     data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
     return data
+
+def seq_offset(data,epoch):
+    stimDist = data[epoch]['stimDist']
+    a = np.zeros((stimDist.shape[1],21))
+    offsets = range(-10,11)
+
+    for I in range(len(offsets)):
+        offset = offsets[I]
+        if offset>0:
+            seq = data[epoch]['seq'][:-offset]-1
+            Fstim = data[epoch]['Fstim'][:,:,offset:]
+        elif offset<0:
+            seq = data[epoch]['seq'][offset:]-1
+            Fstim = data[epoch]['Fstim'][:,:,:-offset]
+        else:
+            seq = data[epoch]['seq']-1
+            Fstim = data[epoch]['Fstim']
+        
+        
+        pre = (0,10);
+        post = (25,30)
+        
+        for gi in range(stimDist.shape[1]):
+            cl = np.argmin(stimDist[:,gi])
+            inds = np.where(seq==gi)[0]
+            a[gi,I] = np.nanmean(Fstim[post[0]:post[1],cl,inds])
+    offset = offsets[np.argsort(-np.nanmean(a,axis=0))[0]]        
+    return offset
+    
 
