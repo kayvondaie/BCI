@@ -5,8 +5,8 @@ import data_dict_create_module_test as ddct
 list_of_dirs = session_counting.counter()
 si = 29;
 folder = str(list_of_dirs[si])
-mouse = 'BCI104'
-session = '012925'
+mouse = 'BCI93'
+session = '012425'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
 #%%
 photostim_keys = ['stimDist', 'favg_raw']
@@ -55,12 +55,10 @@ import plotting_functions as pf
 
 stimDist = data['photostim']['stimDist']*umPerPix
 plt.figure(figsize=(8,4))  # Set figure size to 10x10 inches
-df = data['df_closedloop']
-cc = np.corrcoef(df)
 F = data['F']
-ko = np.nanmean(F[120:360,:,0:10],axis=0)
-kn = np.nanmean(F[120:360,:,10:],axis=0)
-k = np.nanmean(F[120:200,:,0:],axis=0)
+ko = np.nanmean(F[:,:,0:20],axis=0)
+kn = np.nanmean(F[:,:,20:],axis=0)
+k = np.nanmean(F[:,:,0:],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 ccn = np.corrcoef(kn)
@@ -72,20 +70,25 @@ X2 = []
 Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
-    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
-    #plt.plot(favg[0:80,cl,gi])
-    
-    x = np.nanmean(cc[cl,:],axis=0)    
-    x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
-    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
-    y = AMP[1][nontarg,gi]
-    yo = AMP[0][nontarg,gi]
-    
-    #plt.scatter(x[nontarg],amp[nontarg,gi])
-    X.append(x[nontarg])
-    X2.append(x2[nontarg])
-    Y.append(y)
-    Yo.append(yo)
+    cl = np.where((stimDist[:,gi]<10))[0]
+    cl = np.where((stimDist[:,gi]<30) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+
+    if len(cl) > 0:
+        #plt.plot(favg[0:80,cl,gi])
+        A = AMP[0][cl,gi] + AMP[1][cl,gi]
+        B = cc[cl,:]
+        x = np.dot(A.T,B)  
+        
+        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+        y = AMP[1][nontarg,gi]/np.nanmean(AMP[1][cl,gi])
+        yo = AMP[0][nontarg,gi]/np.nanmean(AMP[0][cl,gi])
+        
+        
+        #plt.scatter(x[nontarg],amp[nontarg,gi])
+        X.append(x[nontarg])
+        X2.append(x[nontarg])
+        Y.append(y)
+        Yo.append(yo)
 
 
 
@@ -95,25 +98,25 @@ Y = np.concatenate(Y,axis=1)
 Yo = np.concatenate(Yo,axis=1)
 plt.subplot(231)
 pf.mean_bin_plot(X,Yo,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('Before learning')
 
 plt.subplot(234)
 pf.mean_bin_plot(X,Y,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('After learning')
 
 plt.subplot(132)
 pf.mean_bin_plot(X,Y-Yo,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$\Delta W_{i,j}$')
 plt.tight_layout()
 
 plt.subplot(133)
 pf.mean_bin_plot(X2,Y-Yo,6,1,1,'k')
-plt.xlabel('$\Delta correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$\Delta W_{i,j}$')
 plt.tight_layout()
 plt.title(data['mouse'] + ' ' + data['session'])

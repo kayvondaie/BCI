@@ -6,28 +6,14 @@ Created on Fri Jan 31 14:50:06 2025
 """
 
 
-mouse = 'BCI105'
-session = '012925'
+mouse = 'BCI106'
+session = '013125'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
+#%%
 data = np.load(folder + 'data_main.npy',allow_pickle=True)
 data['photostim'] = np.load(folder + 'data_photostim.npy',allow_pickle=True)
 data['photostim2'] = np.load(folder + 'data_photostim2.npy',allow_pickle=True)
 #%%
-F = data['F']
-trl = F.shape[2]
-tsta = np.arange(0,12,data['dt_si'])
-tsta=tsta-tsta[120]
-k = np.zeros((F.shape[1],trl))
-for ti in range(trl):
-    steps = data['step_time'][ti]
-    indices = np.searchsorted(tsta, steps)
-    indices = indices[indices<699]
-    k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
-k[np.isnan(k)==1]=0
-ccn = np.corrcoef(k[:,10:])
-cco = np.corrcoef(k[:,0:10])
-cc = np.corrcoef(k[:,:])
-#%% 
 AMP = []
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 umPerPix = 1000/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
@@ -42,7 +28,7 @@ for epoch_i in range(2):
     favg = favg_raw*0
     for i in range(favg.shape[1]):
         favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[0:3, i]))/np.nanmean(favg_raw[0:3, i])
-    favg[18:26, :, :] = np.nan
+    favg[18:27, :, :] = np.nan
     
     favg = np.apply_along_axis(
     lambda m: np.interp(
@@ -58,6 +44,22 @@ for epoch_i in range(2):
     AMP.append(amp)
     plt.plot(np.nanmean(np.nanmean(favg[0:40,:,:],axis=2),axis=1))
 #%%
+F = data['F']
+trl = F.shape[2]
+tsta = np.arange(0,12,data['dt_si'])
+tsta=tsta-tsta[120]
+k = np.zeros((F.shape[1],trl))
+for ti in range(trl):
+    steps = data['step_time'][ti]
+    indices = np.searchsorted(tsta, steps)
+    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices-3)))
+    indices = indices[indices<690]
+    k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
+k[np.isnan(k)==1]=0
+ccn = np.corrcoef(k[:,22:])
+cco = np.corrcoef(k[:,0:22])
+cc = np.corrcoef(k[:,:])
+
 import plotting_functions as pf
 
 ei = 1;

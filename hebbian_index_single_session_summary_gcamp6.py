@@ -5,12 +5,12 @@ import data_dict_create_module_test as ddct
 list_of_dirs = session_counting.counter()
 si = 29;
 folder = str(list_of_dirs[si])
-mouse = 'BCI104'
-session = '012925'
+mouse = 'BCI103'
+session = '012125'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
-#%%
+
 photostim_keys = ['stimDist', 'favg_raw']
-bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron']
+bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si','step_time']
 data = ddct.load_hdf5(folder,bci_keys,photostim_keys )
 
 
@@ -33,7 +33,7 @@ for epoch_i in range(2):
     favg = favg_raw*0
     for i in range(favg.shape[1]):
         favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[0:3, i]))/np.nanmean(favg_raw[0:3, i])
-    favg[18:26, :, :] = np.nan
+    favg[8:13, :, :] = np.nan
     
     favg = np.apply_along_axis(
     lambda m: np.interp(
@@ -45,7 +45,7 @@ for epoch_i in range(2):
     arr=favg
     )
 
-    amp = np.nanmean(favg[26:35, :, :], axis=0) - np.nanmean(favg[10:19, :, :], axis=0)
+    amp = np.nanmean(favg[13:20, :, :], axis=0) - np.nanmean(favg[0:6, :, :], axis=0)
     AMP.append(amp)
     plt.plot(np.nanmean(np.nanmean(favg[0:40,:,:],axis=2),axis=1))
 #%%
@@ -58,9 +58,9 @@ plt.figure(figsize=(8,4))  # Set figure size to 10x10 inches
 df = data['df_closedloop']
 cc = np.corrcoef(df)
 F = data['F']
-ko = np.nanmean(F[120:360,:,0:10],axis=0)
-kn = np.nanmean(F[120:360,:,10:],axis=0)
-k = np.nanmean(F[120:200,:,0:],axis=0)
+ko = np.nanmean(F[40:80,:,0:20],axis=0)
+kn = np.nanmean(F[40:80,:,20:],axis=0)
+k = np.nanmean(F[40:80,:,0:],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 ccn = np.corrcoef(kn)
@@ -72,7 +72,7 @@ X2 = []
 Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
-    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+    cl = np.where((stimDist[:,gi]<30) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> 1)))[0]
     #plt.plot(favg[0:80,cl,gi])
     
     x = np.nanmean(cc[cl,:],axis=0)    
@@ -95,25 +95,25 @@ Y = np.concatenate(Y,axis=1)
 Yo = np.concatenate(Yo,axis=1)
 plt.subplot(231)
 pf.mean_bin_plot(X,Yo,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('Before learning')
 
 plt.subplot(234)
 pf.mean_bin_plot(X,Y,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$W_{i,j}$')
 plt.title('After learning')
 
 plt.subplot(132)
 pf.mean_bin_plot(X,Y-Yo,5,1,1,'k')
-plt.xlabel('$correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$\Delta W_{i,j}$')
 plt.tight_layout()
 
 plt.subplot(133)
 pf.mean_bin_plot(X2,Y-Yo,6,1,1,'k')
-plt.xlabel('$\Delta correlation_{i,j}$')
+plt.xlabel('Pre-post correlation')
 plt.ylabel('$\Delta W_{i,j}$')
 plt.tight_layout()
 plt.title(data['mouse'] + ' ' + data['session'])

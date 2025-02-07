@@ -636,8 +636,7 @@ def siHeader_get(folder):
     return siHeader
 
 def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
-    
-    
+ 
     trip = np.std(F,axis=0)
     trip = np.where(trip<10)[0]
 
@@ -674,8 +673,10 @@ def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
     seq = np.asarray(seq)
     if offset<0:
         seq = seq[offset:]
+        print('offset is less than zero')
     elif offset>0:
         seq = seq[:-offset]
+        print('offset is greater than zero')
     
     stimID = np.zeros((F.shape[1],))
     for ti in range(numTrl):
@@ -700,7 +701,13 @@ def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
         except ValueError as e:
             print(f"Skipping trial {ti} due to shape mismatch: {e}")
                 
-   
+    if offset<0:        
+        Fstim = Fstim[:,:,:-offset] 
+        Fstim_raw = Fstim_raw[:,:,:-offset] 
+    elif offset>0:        
+        Fstim = Fstim[:,:,offset:]
+        Fstim_raw = Fstim_raw[:,:,offset:]
+        
     deg = siHeader['metadata']['hRoiManager']['imagingFovDeg']
     g = [i for i in range(len(deg)) if deg.startswith(" ",i)]
     gg = [i for i in range(len(deg)) if deg.startswith(";",i)]
@@ -797,16 +804,16 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
-    data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat)
+    data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, 0)
     
-    # offset = seq_offset(data,key_name)
-    # if offset != 0:
-    #     print('offset detected for' + key_name)
-    #     data[key_name] = dict()
-    #     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
-    #     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
-    #     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
-    #     data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
+    offset = seq_offset(data,key_name)
+    if offset != 0:
+        print('offset detected for ' + key_name)
+        data[key_name] = dict()
+        data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
+        data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
+        data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
+        data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
 
     # Remove redundant keys
     keys_to_remove = ['Fstim_raw']

@@ -1,28 +1,30 @@
-photostim_keys = ['stimDist', 'seq','Fstim']
+photostim_keys = ['stimDist', 'seq','Fstim','favg']
 bci_keys = []
 data = ddct.load_hdf5(folder,bci_keys,photostim_keys )
 
 from scipy.stats import ttest_ind
-
+stimDist = data['photostim']['stimDist']
 Fstim = data['photostim']['Fstim'];
 #plt.scatter(stimDist[:,gi],-np.log(p_value))
 bins = [30,100]
 bins = np.linspace(0,200,10)
 bins = np.arange(0,300,10)
 bins = np.concatenate((np.arange(0, 100, 10), np.arange(100, 300, 25)))
-G = 50
+G = stimDist.shape[1]
 num_connect = np.zeros((len(bins)-1,G))
 frac_e = np.zeros((len(bins)-1,G))
 frac_i = np.zeros((len(bins)-1,G))
 frac_connect = np.zeros((len(bins)-1,G))
 pv = np.zeros((Fstim.shape[1],favg.shape[2]))
-
+favg = data['photostim']['favg']
+amp = np.nanmean(favg[26:35, :, :], axis=0) - np.nanmean(favg[10:19, :, :], axis=0)
 for gi in range(G):    
     seq = data['photostim']['seq']-1
     ind = np.where(seq == gi)[0][::]
     post = np.nanmean(Fstim[27:35, :, ind], axis=0) 
-    pre  = np.nanmean(Fstim[10:18, :, ind], axis=0)
-    t_stat, p_value = ttest_ind(post, pre, axis=1)
+    pre  = np.nanmean(Fstim[10:16, :, ind], axis=0)
+    ind = np.where(np.sum(np.isnan(pre[0:10,:]),axis=0)==0)[0]
+    t_stat, p_value = ttest_ind(post[:,ind], pre[:,ind], axis=1)
     pv[:,gi] = p_value
 #%%
 frac_e = np.zeros((len(bins)-1,))
