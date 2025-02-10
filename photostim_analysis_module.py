@@ -1,6 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def stim_amp(data):
+    
+    # Initialize variables
+    favg_raw = data['photostim']['favg_raw']
+    favg = np.zeros(favg_raw.shape)
+    stimDist = data['photostim']['stimDist']
+    #bl = np.percentile(Ftrace, 50, axis=1)
+    N = stimDist.shape[0]
+    
+    # Process photostimulation data
+    for i in range(N):
+        favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[5:9, i]))/np.nanmean(favg_raw[5:9, i])
+    
+    amp = np.nanmean(favg[16:20, :, :], axis=0) - np.nanmean(favg[5:9, :, :], axis=0)
+    
+    
+    
+    return stimDist, amp, favg
+        
+
 def causal_connectivity(data):
     """
     Calculate causal connectivity given a folder path.
@@ -44,12 +64,12 @@ def causal_connectivity(data):
                 wcc[j, i] = np.nanmean(amp[i, ind])
     
     # Plot causal connectivity heatmap
-    ind = np.where(data['iscell'][:, 0] == 1)[0]
-    plt.imshow(wcc[np.ix_(ind, ind)], vmin=-1, vmax=1, cmap='seismic')
-    plt.xlabel('Post-synaptic')
-    plt.ylabel('Pre-synaptic')
-    plt.title(data['mouse'] + '  ' + data['session'])
-    plt.colorbar()
-    plt.show()
+    # ind = np.where(data['iscell'][:, 0] == 1)[0]
+    # plt.imshow(wcc[np.ix_(ind, ind)], vmin=-1, vmax=1, cmap='seismic')
+    # plt.xlabel('Post-synaptic')
+    # plt.ylabel('Pre-synaptic')
+    # plt.title(data['mouse'] + '  ' + data['session'])
+    # plt.colorbar()
+    # plt.show()
     
     return wcc, stimDist, amp, pairwiseDist, favg

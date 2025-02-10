@@ -9,6 +9,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 mpl.rcParams['figure.dpi'] = 300
 
+
 ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
 from scipy.interpolate import interp1d
 len_files = ops['frames_per_file'];
@@ -49,8 +50,10 @@ switchesu = np.where((k!=0) & (~np.isnan(k)))[0]
 k = np.diff(BCI_thresholds[0,:]);
 switchesl = np.where((k!=0) & (~np.isnan(k)))[0]
 switches = np.unique(np.concatenate((switchesu, switchesl)))
+switches = switchesu
 switches  = np.concatenate(([0],switches))
 avg = np.empty((len(len_files) - 1,len(switches)))
+avg_raw = np.empty((len(len_files) - 1,len(switches)))
 
 # Define the function based on the flattened BCI_threshold
 for si in range(len(switches)):
@@ -68,7 +71,7 @@ for si in range(len(switches)):
     trl_frm = np.zeros(len(t),)
     thr_time = np.full((len(t),2),np.nan);
     # Loop through the trials
-    for i in range(len(len_files) - 1):
+    for i in range(len(rew) - 1):
         strts[i] = strt  # Literal translation of strts(i) = strt
         ind = np.arange(strt, strt + len_files[i], dtype=int)  # Ensure ind is an array of integers
         ind = np.clip(ind, 0, len(roi_interp) - 1)
@@ -96,10 +99,11 @@ for si in range(len(switches)):
             stp = np.max(np.where(t_si[:, i] < rt[i])[0])
         else:
             stp = t_si.shape[0]
-    
+        
         # Calculate average for this trial
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
-#%%
+        avg_raw[i,si] = np.nanmean((fcn[:stp, i]))
+        FCN[stp:,i] = np.nan
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
 plt.rcParams['font.family'] = 'Arial'
@@ -107,10 +111,16 @@ plt.rcParams['font.size'] = 8  # Set this to the desired font size
 plt.subplot(131)
 epochs = np.concatenate((switches, [len(rew)]))
 dummy_hit = np.zeros(len(rew),)
-for si in range(len(switches)):
+dummy_rt = np.zeros(len(switches),)
+upr = np.unique(BCI_thresholds[1,:])[0:-1]
+lwr = np.unique(BCI_thresholds[0,:])[0]
+for si in range(len(switches)-1):
     ind = np.arange(epochs[si], epochs[si+1])
     min_activity = float(siHeader['metadata']['hRoiManager']['linesPerFrame'])/800*.35
     dummy_hit[ind] = np.nanmean(avg[0:10,si] > min_activity)
+    alpha = (upr[0]-lwr)/(upr[si]-lwr)
+    dummy_hit[ind] = np.mean(rt[0:switches[1]]/alpha<10)
+    dummy_rt[si] = np.nanmean(rt[0:switches[1]]/alpha);
 plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(8,len(rew))
 plt.plot(dummy_hit)    
 plt.xlabel('Trial #')
@@ -136,11 +146,11 @@ F = data['Fraw'];
 cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 20,vmax=90)
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=450)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
-plt.xticks([0,200], ['0', '10'])
+plt.xticks([120,720], ['0', '10'])
 plt.xlabel('Time from trial start (s)')
 plt.ylabel('Trial #')
 plt.tight_layout()

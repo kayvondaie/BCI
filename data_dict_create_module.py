@@ -34,8 +34,8 @@ def main(folder):
     
     data['dat_file'] = folder + r'/suite2p_BCI/plane0/'
     slash_indices = [match.start() for match in re.finditer('/', folder)]
-    data['session'] = folder[slash_indices[-2]+1:slash_indices[-1]]
-    data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
     if os.path.isdir(folder +r'/suite2p_BCI/'):
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist() 
         dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
@@ -125,7 +125,7 @@ def main(folder):
     #behavioral data
     behav_folder = 'I:/My Drive/Learning rules/BCI_data/behavior//' + 'BCI_' + data['mouse'][3:]
     behav_file = behav_folder + '/' + data['session'] + r'-bpod_zaber.npy';
-    if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy') or os.path.isfile(behav_file) or os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'):
+    if os.path.isfile(folder + folder[-7:-1]+r'-bpod_zaber.npy') or os.path.isfile(behav_file) or os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy') or os.path.isfile(folder[0:-8] + r'/behavior/' +folder[-14:-8]+r'-bpod_zaber.npy'):
         import folder_props_fun        
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
         ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
@@ -141,15 +141,16 @@ def main(folder):
         elif os.path.isfile(folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'):
             behav_file = folder + r'/behavior/' + folder[-7:-1]+r'-bpod_zaber.npy'
             data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(behav_file,base,ops,dt_si)
- 
-
+        elif os.path.isfile(folder[0:-8] + r'/behavior/' +folder[-14:-8]+r'-bpod_zaber.npy'):
+            behav_file = folder[0:-8] + r'/behavior/' +folder[-14:-8]+r'-bpod_zaber.npy'
+            data['reward_time'], data['step_time'], data['trial_start'], data['SI_start_times'],data['threshold_crossing_time'] = create_zaber_info(behav_file,base,ops,dt_si)
     # Define file paths
     base_file_path = os.path.join(folder, f"data_{data['mouse']}_{data['session']}")
-    data_file_path = base_file_path + "_main.npy"
+    data_file_path = base_file_path + ".npy"
     photostim_file_path = base_file_path + "_photostim.npy"
     
     # Extract 'photostim' and remove it from the main dictionary
-#    photostim_data = data.pop('photostim')
+    #photostim_data = data.pop('photostim')
     
     # Save the reduced 'data' dictionary
  #   np.save(data_file_path, data, allow_pickle=True)
@@ -157,7 +158,29 @@ def main(folder):
     # Save the 'photostim' data separately
     # np.save(photostim_file_path, photostim_data, allow_pickle=True)
     
-    np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
+    
+    keys_to_remove = ['Fstim_raw', 'favg', 'FstimRaw']
+    
+    # Check if 'photostim' exists in the data dictionary
+    if 'photostim' in data:
+        # Remove only the keys that exist in 'photostim'
+        for key in keys_to_remove:
+            if key in data['photostim']:
+                del data['photostim'][key]
+        print("Redundant keys removed from data['photostim']!")
+    else:
+        print("'photostim' not found in data.")
+
+    import pickle
+
+    # Save the dictionary as a .npy file using pickle protocol 4
+    with open(folder + f"data_{data['mouse']}_{data['session']}.npy", 'wb') as f:
+        pickle.dump(data, f, protocol=4)
+    
+    print("Dictionary saved successfully as .npy using pickle!")
+    
+
+    
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy', data, allow_pickle=True, pickle_protocol=4)
     #np.savez_compressed(folder + r'data_'+data['mouse']+r'_'+data['session'], **data)
     #np.save(folder + r'data_'+data['mouse']+r'_'+data['session']+r'_'+str(int(np.round(np.random.rand()*100000)))+r'.npy',data)
@@ -437,13 +460,56 @@ def create_zaber_info(folder,base,ops,dt_si):
     SI_start_times = zaber['Scanimage_trigger_times']
     return rewT[files_with_movies], steps[files_with_movies], trial_start, SI_start_times[files_with_movies],threshold_crossing_times
 
-def load_data_dict(folder):
-    data = dict()
+def load_data_dict(folder, subset=None):
+    """
+    Load a data dictionary from a .npy file, supporting both old and new formats.
+    
+    Parameters:
+        folder (str): Path to the folder containing the data file.
+        subset (str, optional): Specify 'photostim' to load only data['photostim'], 
+                                or 'no_photostim' to load all fields except data['photostim'].
+    
+    Returns:
+        dict or subset of dict: The loaded data dictionary (or a subset of it).
+    """
+    import re
+    import pickle
+    import numpy as np
+    
+    # Extract session and mouse from folder path
     slash_indices = [match.start() for match in re.finditer('/', folder)]
-    data['session'] = folder[slash_indices[-2]+1:slash_indices[-1]]
-    data['mouse'] = folder[slash_indices[-3]+1:slash_indices[-2]];
-    data = np.load(folder + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',allow_pickle=True).tolist()
+    session = folder[slash_indices[-3]+1:slash_indices[-2]]
+    mouse = folder[slash_indices[-4]+1:slash_indices[-3]]
+    
+    # Construct file path
+    file_path = folder + f"data_{mouse}_{session}.npy"
+    
+    # Try to load using pickle (new format)
+    try:
+        with open(file_path, 'rb') as f:
+            data = pickle.load(f)
+        print("Loaded using pickle (new format).")
+    except Exception as e:
+        print(f"Failed to load with pickle: {e}")
+        # Fall back to NumPy load (old format)
+        try:
+            data = np.load(file_path, allow_pickle=True).tolist()
+            print("Loaded using np.load (old format).")
+        except Exception as e2:
+            raise ValueError(f"Failed to load file with both methods: {e2}")
+    
+    # Handle subsets if requested
+    if subset == 'photostim':
+        if 'photostim' in data:
+            return data['photostim']
+        else:
+            raise KeyError("Key 'photostim' not found in data.")
+    elif subset == 'no_photostim':
+        return {k: v for k, v in data.items() if k != 'photostim'}
+    
     return data
+
+
 
 def read_stim_file(folder,subfolder):
     import numpy as np
@@ -550,8 +616,10 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     for i in range(len(g)-1):
         num.append(float(deg[g[i]+1:g[i+1]]))
     dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
-    degRange = np.max(num) - np.min(num)
-    pixPerDeg = dim[0]/degRange
+    degRange = (num[4] - num[0],num[1] - num[5])
+    #degRange = np.max(num) - np.min(num)
+    #pixPerDeg = dim/degRange
+    pixPerDeg = np.array(dim) / np.array(degRange)
 
     centroidX = []
     centroidY = []
@@ -576,6 +644,8 @@ def stimDist_single_cell(ops,F,siHeader,stat):
     seq = seq[0:Fstim.shape[2]]
     for gi in range(len(photostim_groups)):        
         coordinates = photostim_groups[gi]['rois'][1]['scanfields']['slmPattern']
+        coordinates = np.array([[0, 0, 0, 0]])
+        coordinates = np.asarray(coordinates)
         if np.ndim(coordinates) == 1:
             coordinates = np.asarray(coordinates)
             coordinates = coordinates.reshape(1,-1)
@@ -588,8 +658,8 @@ def stimDist_single_cell(ops,F,siHeader,stat):
         stimPos = np.zeros(np.shape(xy))
         galvoPos = np.zeros(np.shape(xy))
         for i in range(np.shape(xy)[0]):
-            stimPos[i,:] = np.array(xy[i,:]-num[0])*pixPerDeg
-            galvoPos[i,:] = np.array(xygalvo[i,:]-num[0])*pixPerDeg
+            stimPos[i,:] = np.array(xy[i,:]-[num[-1], num[0]])*pixPerDeg
+            galvoPos[i,:] = np.array(xygalvo[i,:]-[num[-1], num[0]])*pixPerDeg
         sd = np.zeros([np.shape(xy)[0],favg.shape[1]])        
         for i in range(np.shape(xy)[0]):
             for j in range(favg.shape[1]):

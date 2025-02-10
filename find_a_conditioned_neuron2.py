@@ -8,9 +8,13 @@ from scipy.signal import medfilt
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)
+
 mpl.rcParams['figure.dpi'] = 300
+iscell = data['iscell']
 Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
-df = Ftrace
+ind = np.where(iscell[:,0]==1)[0]
+df = Ftrace[ind,:]
 cn = data['conditioned_neuron'][0][0]
 f = data['F'];
 f = np.nanmean(f,axis = 2)
@@ -18,12 +22,11 @@ N = f.shape[1]
 for i in range(N):
     bl = np.nanmean(f[0:19,i])
     f[:,i] = f[:,i] - bl    
-tune = np.mean(f[40:100,:],axis = 0)
+tune = np.mean(f[120:250,:],axis = 0)
 
-#%%
 lens = 10;
 evts = []
-for ci in range(Ftrace.shape[0]):
+for ci in range(df.shape[0]):
     a = Ftrace[ci,:];
     b = np.convolve(a,np.ones(lens),'same')/lens;
     noise = np.std(b-a)*3;
@@ -31,17 +34,17 @@ for ci in range(Ftrace.shape[0]):
     evts.append(np.mean(a > (bl + noise)))
 plt.plot(tune,evts,'o',markerfacecolor = 'w')
 plt.show()
-#%%
+
 try:
     del str
 except:
     a=[]
 
-iscell = data['iscell']
-cns = np.where(((tune) < .0) & (np.asarray(evts) > .06) & (iscell[:,0]==1))[0]
+
+cns = np.where(((tune) < .2) & (np.asarray(evts) > .08) )[0]
 cns = cns[cns != cn]
 
-fig, axs = plt.subplots(12, 5, figsize=(5, 10))  # Adjust figsize as needed
+fig, axs = plt.subplots(12, 5, figsize=(2.5, 5))  # Adjust figsize as needed
 # [rest of your plotting code]
 axs = axs.ravel()
 
@@ -68,7 +71,36 @@ for i in range(40, 60):
     a = img[y - win:y + win, x - win:x + win]
     axs[i].imshow(a, vmin=0, vmax=200, cmap='gray')
     axs[i].axis('off')
-    axs[i].set_title(str(cns[i-40]), fontsize=6)
+    axs[i].set_title(str(cns[i-40]+1), fontsize=6)
 print(cns[0:19]+1)
 plt.tight_layout()
 plt.show()
+
+#%%
+win = 5
+brightness = np.zeros(favg.shape[1])
+brightness2 = np.zeros(favg.shape[1])
+ss = stat[ind]
+for i in range(f.shape[1]):
+    x = np.round(data['centroidX'][i])
+    y = np.round(data['centroidY'][i])
+    x = int(x)
+    y = int(y)
+    xpix = ss[i]['xpix']
+    ypix = ss[i]['ypix']
+    a = img[y - win:y + win, x - win:x + win]
+    brightness[i] = np.nanmean(a)
+    a = img[ypix, xpix]
+    brightness2[i] = np.nanmean(a)
+
+plt.plot(brightness2)
+thr = 300;
+plt.plot((0,favg.shape[1]),(thr,thr),'k:')
+too_bright = np.where(brightness2>thr)[0]
+
+stim_cells = np.setdiff1d(stim_cells,too_bright)
+num_cells = 100
+stim_cells = stim_cells[0:num_cells]
+print('0:' + str(max(stim_cells)+1))
+too_bright = too_bright[too_bright<max(stim_cells)]
+print(too_bright+1)
