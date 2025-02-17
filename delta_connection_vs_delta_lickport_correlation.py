@@ -52,7 +52,7 @@ k = np.zeros((F.shape[1],trl))
 for ti in range(trl):
     steps = data['step_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices-3)))
+    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices+4)))
     indices = indices[indices<690]
     k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
 k[np.isnan(k)==1]=0
@@ -70,18 +70,18 @@ Yo = []
 for gi in range(stimDist.shape[1]):
     cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
     #plt.plot(favg[0:80,cl,gi])
-    
-    x = np.nanmean(cc[cl,:],axis=0)    
-    x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
-    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
-    y = AMP[1][nontarg,gi]
-    yo = AMP[0][nontarg,gi]
-    
-    #plt.scatter(x[nontarg],amp[nontarg,gi])
-    X.append(x[nontarg])
-    X2.append(x2[nontarg])
-    Y.append(y)
-    Yo.append(yo)
+    if len(cl)>0:
+        x = np.nanmean(cc[cl,:],axis=0)    
+        x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
+        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+        y = AMP[1][nontarg,gi]
+        yo = AMP[0][nontarg,gi]
+        
+        #plt.scatter(x[nontarg],amp[nontarg,gi])
+        X.append(x[nontarg])
+        X2.append(x2[nontarg])
+        Y.append(y)
+        Yo.append(yo)
 
 
 

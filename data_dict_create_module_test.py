@@ -672,13 +672,17 @@ def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
     seq = seq[seqPos:]
     seq = np.asarray(seq)
     if offset<0:
-        seq = seq[offset:]
+        seq = seq[-offset:]
         print('offset is less than zero')
+        print(offset)
     elif offset>0:
         seq = seq[:-offset]
         print('offset is greater than zero')
+        print(offset)
     
     stimID = np.zeros((F.shape[1],))
+    print(numTrl)
+    print(len(seq))
     for ti in range(numTrl):
         pre_pad = np.arange(strt-pre,strt)
         ind = list(range(strt,strt+ops['frames_per_file'][ti]))
@@ -702,8 +706,8 @@ def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
             print(f"Skipping trial {ti} due to shape mismatch: {e}")
                 
     if offset<0:        
-        Fstim = Fstim[:,:,:-offset] 
-        Fstim_raw = Fstim_raw[:,:,:-offset] 
+        Fstim = Fstim[:,:,:offset] 
+        Fstim_raw = Fstim_raw[:,:,:offset] 
     elif offset>0:        
         Fstim = Fstim[:,:,offset:]
         Fstim_raw = Fstim_raw[:,:,offset:]
@@ -890,32 +894,31 @@ def load_hdf5(folder,bci_keys,photostim_keys):
                     data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
     return data
 
-def seq_offset(data,epoch):
+def seq_offset(data, epoch):
     stimDist = data[epoch]['stimDist']
-    a = np.zeros((stimDist.shape[1],21))
-    offsets = range(-10,11)
+    a = np.zeros((stimDist.shape[1], 21))
+    offsets = range(-10, 11)
 
-    for I in range(len(offsets)):
-        offset = offsets[I]
-        if offset>0:
-            seq = data[epoch]['seq'][:-offset]-1
-            Fstim = data[epoch]['Fstim'][:,:,offset:]
-        elif offset<0:
-            seq = data[epoch]['seq'][offset:]-1
-            Fstim = data[epoch]['Fstim'][:,:,:-offset]
+    for I, offset in enumerate(offsets):
+        if offset > 0:
+            seq = data[epoch]['seq'][:-offset] - 1
+            Fstim = data[epoch]['Fstim'][:, :, offset:]
+        elif offset < 0:
+            seq = data[epoch]['seq'][-offset:] - 1  # FIX: Correct slicing
+            Fstim = data[epoch]['Fstim'][:, :, :offset]  # FIX: Correct slicing
         else:
-            seq = data[epoch]['seq']-1
+            seq = data[epoch]['seq'] - 1
             Fstim = data[epoch]['Fstim']
-        
-        
-        pre = (0,10);
-        post = (25,30)
-        
+
+        pre = (0, 10)
+        post = (25, 30)
+
         for gi in range(stimDist.shape[1]):
-            cl = np.argmin(stimDist[:,gi])
-            inds = np.where(seq==gi)[0]
-            a[gi,I] = np.nanmean(Fstim[post[0]:post[1],cl,inds])
-    offset = offsets[np.argsort(-np.nanmean(a,axis=0))[0]]        
+            cl = np.argmin(stimDist[:, gi])
+            inds = np.where(seq == gi)[0]
+            a[gi, I] = np.nanmean(Fstim[post[0]:post[1], cl, inds])
+
+    offset = offsets[np.argsort(-np.nanmean(a, axis=0))[0]]
     return offset
-    
+
 
