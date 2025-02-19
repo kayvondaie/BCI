@@ -566,36 +566,40 @@ def load_data_dict(folder, subset=None):
     import pickle
     import numpy as np
     
-    # Extract session and mouse from folder path
-    slash_indices = [match.start() for match in re.finditer('/', folder)]
-    session = folder[slash_indices[-2]+1:slash_indices[-1]]
-    mouse = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data = np.load(folder + 'data_main.npy',allow_pickle=True)
+    data['photostim'] = np.load(folder + 'data_photostim.npy',allow_pickle=True)
+    data['photostim2'] = np.load(folder + 'data_photostim2.npy',allow_pickle=True)
     
-    # Construct file path
-    file_path = folder + f"data_{mouse}_{session}.npy"
+    # # Extract session and mouse from folder path
+    # slash_indices = [match.start() for match in re.finditer('/', folder)]
+    # session = folder[slash_indices[-2]+1:slash_indices[-1]]
+    # mouse = folder[slash_indices[-3]+1:slash_indices[-2]]
     
-    # Try to load using pickle (new format)
-    try:
-        with open(file_path, 'rb') as f:
-            data = pickle.load(f)
-        print("Loaded using pickle (new format).")
-    except Exception as e:
-        print(f"Failed to load with pickle: {e}")
-        # Fall back to NumPy load (old format)
-        try:
-            data = np.load(file_path, allow_pickle=True).tolist()
-            print("Loaded using np.load (old format).")
-        except Exception as e2:
-            raise ValueError(f"Failed to load file with both methods: {e2}")
+    # # Construct file path
+    # file_path = folder + f"data_{mouse}_{session}.npy"
     
-    # Handle subsets if requested
-    if subset == 'photostim':
-        if 'photostim' in data:
-            return data['photostim']
-        else:
-            raise KeyError("Key 'photostim' not found in data.")
-    elif subset == 'no_photostim':
-        return {k: v for k, v in data.items() if k != 'photostim'}
+    # # Try to load using pickle (new format)
+    # try:
+    #     with open(file_path, 'rb') as f:
+    #         data = pickle.load(f)
+    #     print("Loaded using pickle (new format).")
+    # except Exception as e:
+    #     print(f"Failed to load with pickle: {e}")
+    #     # Fall back to NumPy load (old format)
+    #     try:
+    #         data = np.load(file_path, allow_pickle=True).tolist()
+    #         print("Loaded using np.load (old format).")
+    #     except Exception as e2:
+    #         raise ValueError(f"Failed to load file with both methods: {e2}")
+    
+    # # Handle subsets if requested
+    # if subset == 'photostim':
+    #     if 'photostim' in data:
+    #         return data['photostim']
+    #     else:
+    #         raise KeyError("Key 'photostim' not found in data.")
+    # elif subset == 'no_photostim':
+    #     return {k: v for k, v in data.items() if k != 'photostim'}
     
     return data
 
@@ -920,5 +924,36 @@ def seq_offset(data, epoch):
 
     offset = offsets[np.argsort(-np.nanmean(a, axis=0))[0]]
     return offset
+
+def load_hdf5_2(folder, bci_keys=None, photostim_keys=None):
+    import os
+    import h5py
+    import numpy as np
+
+    data = {'photostim': dict(), 'photostim2': dict()}
+
+    # Load photostim keys
+    for file_name, key_store in zip(["data_photostim.h5", "data_photostim2.h5"], ["photostim", "photostim2"]):
+        with h5py.File(os.path.join(folder, file_name), "r") as f:
+            # If photostim_keys is empty or None, load all keys
+            keys_to_load = photostim_keys if photostim_keys else list(f.keys())
+
+            for key in keys_to_load:
+                data[key_store][key] = f[key][:]
+    
+    # Load bci keys
+    with h5py.File(os.path.join(folder, "data_main.h5"), "r") as f:
+        # If bci_keys is empty or None, load all keys
+        keys_to_load = bci_keys if bci_keys else list(f.keys())
+
+        for key in keys_to_load:
+            try:
+                data[key] = f[key][:]
+            except:
+                data[key] = f[key][()]
+                if isinstance(data[key], bytes):
+                    data[key] = data[key].decode('utf-8')
+
+    return data
 
 
