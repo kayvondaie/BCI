@@ -6,7 +6,7 @@ list_of_dirs = session_counting.counter()
 si = 29;
 folder = str(list_of_dirs[si])
 mouse = 'BCI93'
-session = '012425'
+session = '020525'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
 #%%
 photostim_keys = ['stimDist', 'favg_raw']
@@ -71,7 +71,7 @@ Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
     cl = np.where((stimDist[:,gi]<10))[0]
-    cl = np.where((stimDist[:,gi]<30) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
 
     if len(cl) > 0:
         #plt.plot(favg[0:80,cl,gi])

@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI88/012725/pophys/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI88/012425/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI102/021125/pophys/']
+#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI107/013125/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -196,10 +196,8 @@ for ei in range(0,len(ind)):
 
 import data_dict_create_module_test as ddc
 data = ddc.main(folder)
-if data['mouse'] == 'BCI69':
-    bci69_folder = 'H:/My Drive/Learning rules/BCI_data/BCI_69/'
-    np.save(bci69_folder  + r'data_'+data['mouse']+r'_'+data['session']+r'.npy',data)
 
+del str
 #%%
 os.chdir(r'C:\Users\scanimage\Documents\Python Scripts\BCI_analysis')
 import extract_scanimage_metadata
