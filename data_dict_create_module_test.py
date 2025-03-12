@@ -159,34 +159,41 @@ def main(folder, index=None):
     if os.path.isdir(folder +r'/suite2p_spont/'):
         data['spont'] = np.load(folder +r'/suite2p_spont/plane0/F.npy', allow_pickle=True)
     
-    if os.path.isdir(folder +r'/suite2p_spont/'):
-        # Load iscell, stat, F
-        iscell_spont = np.load(folder + r'/suite2p_spont/plane0/iscell.npy', allow_pickle=True)
-        stat_spont   = np.load(folder + r'/suite2p_spont/plane0/stat.npy',   allow_pickle=True)
-        F_spont      = np.load(folder + r'/suite2p_spont/plane0/F.npy',      allow_pickle=True)
     
-        # Subselect real cells
-        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
-        F_spont = F_spont[cells_spont, :]
-        stat_spont = stat_spont[cells_spont]
+    # Mapping of data keys to possible spontaneous folder names
+    folder_mapping = {
+        'spont': 'suite2p_spont',
+        'spont_pre': 'suite2p_spont_pre',
+        'spont_post': 'suite2p_spont_post'
+    }
     
-        # Store in data dict
-        data['spont'] = F_spont
-        
-        
-    if os.path.isdir(folder +r'/suite2p_spont2/'):
-        # Load iscell, stat, F
-        iscell_spont = np.load(folder + r'/suite2p_spont2/plane0/iscell.npy', allow_pickle=True)
-        stat_spont   = np.load(folder + r'/suite2p_spont2/plane0/stat.npy',   allow_pickle=True)
-        F_spont      = np.load(folder + r'/suite2p_spont2/plane0/F.npy',      allow_pickle=True)
+    # Iterate over each candidate folder
+    for key, folder_name in folder_mapping.items():
+        folder_path = os.path.join(folder, folder_name)
+        if os.path.isdir(folder_path):
+            print(f"Loading {key} data from {folder_path}")
+            
+            # Construct file paths
+            iscell_path = os.path.join(folder_path, 'plane0', 'iscell.npy')
+            stat_path   = os.path.join(folder_path, 'plane0', 'stat.npy')
+            F_path      = os.path.join(folder_path, 'plane0', 'F.npy')
+            
+            # Load files if they exist
+            if os.path.exists(iscell_path) and os.path.exists(stat_path) and os.path.exists(F_path):
+                iscell_data = np.load(iscell_path, allow_pickle=True)
+                stat_data   = np.load(stat_path, allow_pickle=True)
+                F_data      = np.load(F_path, allow_pickle=True)
+                
+                # Subselect real cells based on the iscell array
+                cells_idx = np.where(np.asarray(iscell_data)[:, 0] == 1)[0]
+                F_data = F_data[cells_idx, :]
+                stat_data = stat_data[cells_idx]
+                
+                # Save processed data in the dictionary with a key corresponding to the folder name
+                data[key] = F_data
+            else:
+                print(f"Required files not found in {folder_path}")
     
-        # Subselect real cells
-        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
-        F_spont = F_spont[cells_spont, :]
-        stat_spont = stat_spont[cells_spont]
-    
-        # Store in data dict
-        data['spont2'] = F_spont
         
 
     #behavioral data

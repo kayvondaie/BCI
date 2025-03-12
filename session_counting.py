@@ -5,7 +5,7 @@ import pandas as pd
 
 def counter():    
     base_dir = Path(r'//allen/aind/scratch/BCI/2p-raw')
-    mice = ["BCI88", "BCI93", "BCI102", "BCI103", "BCI104", "BCI105","BCI106","BCI107"]
+    mice = ["BCI88", "BCI93", "BCI102", "BCI103", "BCI104", "BCI105","BCI106","BCI107","BCI109"]
     cutoff_str = "010525"
     cutoff_date = datetime.datetime.strptime(cutoff_str, "%m%d%y").date()
     

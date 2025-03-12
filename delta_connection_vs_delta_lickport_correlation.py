@@ -52,8 +52,8 @@ k = np.zeros((F.shape[1],trl))
 for ti in range(trl):
     steps = data['step_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices+4)))
-    indices = indices[indices<690]
+    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices-3)))
+    indices = indices[indices<350]
     k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
 k[np.isnan(k)==1]=0
 ccn = np.corrcoef(k[:,22:])
@@ -73,7 +73,7 @@ for gi in range(stimDist.shape[1]):
     if len(cl)>0:
         x = np.nanmean(cc[cl,:],axis=0)    
         x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
-        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<4000))
         y = AMP[1][nontarg,gi]
         yo = AMP[0][nontarg,gi]
         

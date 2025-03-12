@@ -14,7 +14,7 @@ ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist
 from scipy.interpolate import interp1d
 len_files = ops['frames_per_file'];
 cn_ind = data['cn_csv_index'][0]
-rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['threshold_crossing_time']])
+rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['threshold_crossing_time']-data['SI_start_times']])
 rew = ~np.isnan(rt)
 # Define frm_ind (assuming ROI is already loaded)
 roi = np.copy(data['roi_csv'])
@@ -44,6 +44,10 @@ t_si = np.empty((350, len(len_files) - 1))
 
 # Flatten BCI_threshold to ensure it's 1D
 BCI_thresholds = data['BCI_thresholds']
+if (data['mouse'] == 'BCI106') & (data['session'] == '020725'):    
+    BCI_thresholds[:,0] = BCI_thresholds[:,3]
+    BCI_thresholds[:,1] = BCI_thresholds[:,3]
+    BCI_thresholds[:,2] = BCI_thresholds[:,3]
 ind = np.where(~np.isnan(BCI_thresholds[0,:]))[0][-1]
 k = np.diff(BCI_thresholds[1,:]);
 switchesu = np.where((k!=0) & (~np.isnan(k)))[0]
@@ -54,6 +58,8 @@ switches = switchesu
 switches  = np.concatenate(([0],switches))
 avg = np.empty((len(len_files) - 1,len(switches)))
 avg_raw = np.empty((len(len_files) - 1,len(switches)))
+avg_suite2p = np.empty((len(len_files) - 1,len(switches)))
+cn = data['conditioned_neuron'][0][0]
 
 # Define the function based on the flattened BCI_threshold
 for si in range(len(switches)):
@@ -103,6 +109,7 @@ for si in range(len(switches)):
         # Calculate average for this trial
         avg[i,si] = np.nanmean(fun(fcn[:stp, i]))
         avg_raw[i,si] = np.nanmean((fcn[:stp, i]))
+        #avg_suite2p[i,si] = np.nanmean(F[:stp, cn,i])
         FCN[stp:,i] = np.nan
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 plt.figure(figsize=(6, 2))  # Adjust the width and height as needed
@@ -113,15 +120,17 @@ epochs = np.concatenate((switches, [len(rew)]))
 dummy_hit = np.zeros(len(rew),)
 dummy_rt = np.zeros(len(switches),)
 upr = np.unique(BCI_thresholds[1,:])[0:-1]
+upr = BCI_thresholds[1,switches+1]
 lwr = np.unique(BCI_thresholds[0,:])[0]
-for si in range(len(switches)-1):
+for si in range(len(switches)):
     ind = np.arange(epochs[si], epochs[si+1])
     min_activity = float(siHeader['metadata']['hRoiManager']['linesPerFrame'])/800*.35
     dummy_hit[ind] = np.nanmean(avg[0:10,si] > min_activity)
     alpha = (upr[0]-lwr)/(upr[si]-lwr)
+    print('alpha = ' + str(1/alpha))
     dummy_hit[ind] = np.mean(rt[0:switches[1]]/alpha<10)
     dummy_rt[si] = np.nanmean(rt[0:switches[1]]/alpha);
-plt.plot(np.convolve(rew[:],np.ones(10,))/10,'k');plt.xlim(8,len(rew))
+plt.plot(np.convolve(rew.flatten(),np.ones(10,))/10,'k');plt.xlim(10,len(rew))
 plt.plot(dummy_hit)    
 plt.xlabel('Trial #')
 plt.ylabel('Hit rate')
@@ -143,10 +152,9 @@ plt.title(data['mouse'] + '  ' + data['session'])
 
 plt.subplot(133);
 F = data['Fraw'];
-cn = data['conditioned_neuron'][0][0]
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds),vmax=np.nanmax(BCI_thresholds), aspect='auto')
 #plt.imshow(F[:,cn,:].T,vmin = np.nanmin(BCI_thresholds)/4,vmax=np.nanmax(BCI_thresholds)/4, aspect='auto')
-plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=450)
+plt.imshow(F[:,cn,:].T,aspect='auto',vmin = 0,vmax=650)
 plt.gca().spines['top'].set_visible(False)
 plt.gca().spines['right'].set_visible(False)
 plt.subplots_adjust(left=0.1, right=0.9, top=0.9, bottom=0.1, wspace=0.3)
