@@ -829,7 +829,8 @@ def process_photostim(folder, subfolder, data, index):
         data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
         data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
         data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
-
+    
+    data[key_name]['Ftrace'] = Ftrace
     # Remove redundant keys
     keys_to_remove = ['Fstim_raw']
     for key in keys_to_remove:
