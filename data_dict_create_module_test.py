@@ -808,6 +808,7 @@ def process_photostim(folder, subfolder, data, index):
     Ftrace = np.load(folder + subfolder + 'F.npy', allow_pickle=True)
     cells = np.where(np.asarray(iscell)[:,0]==1)[0]
     Ftrace = Ftrace[cells,:]
+    Ftrace_copy = Ftrace.copy()
     stat = stat[cells]
     
     ops = np.load(folder + subfolder + 'ops.npy', allow_pickle=True).tolist()
@@ -816,6 +817,7 @@ def process_photostim(folder, subfolder, data, index):
     # Set the key name as 'photostim', 'photostim2', etc.
     key_name = f'photostim{index if index > 1 else ""}'
     data[key_name] = dict()
+    data[key_name]['Ftrace'] = Ftrace_copy
     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
@@ -830,7 +832,7 @@ def process_photostim(folder, subfolder, data, index):
         data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
         data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
     
-    data[key_name]['Ftrace'] = Ftrace
+    
     # Remove redundant keys
     keys_to_remove = ['Fstim_raw']
     for key in keys_to_remove:
