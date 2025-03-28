@@ -8,7 +8,7 @@ fstack = []
 for ti in range(trl):
     steps = data['step_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = indices[indices<690]
+    indices = indices[indices<F.shape[0]-10]
     v = np.zeros(len(tsta))
     v[indices] = 1;
     vel.append(v)

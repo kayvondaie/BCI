@@ -442,8 +442,8 @@ def create_zaber_info(folder,base,ops,dt_si):
     trial_times = np.array(trial_times)
     L = len(trial_times)
     
-    trial_times = ops['frames_per_file']*dt_si
-    trial_times = trial_times[0:L]
+    # trial_times = ops['frames_per_file']*dt_si
+    # trial_times = trial_times[0:L]
     tt = np.cumsum(trial_times)
     tt = np.insert(tt,0,0)
     steps = zaber['zaber_move_forward'];

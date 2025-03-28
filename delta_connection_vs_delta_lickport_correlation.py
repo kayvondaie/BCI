@@ -6,8 +6,8 @@ Created on Fri Jan 31 14:50:06 2025
 """
 
 
-mouse = 'BCI106'
-session = '013125'
+mouse = 'BCI103'
+session = '012225'
 folder = folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
 #%%
 data = np.load(folder + 'data_main.npy',allow_pickle=True)
@@ -47,17 +47,17 @@ for epoch_i in range(2):
 F = data['F']
 trl = F.shape[2]
 tsta = np.arange(0,12,data['dt_si'])
-tsta=tsta-tsta[120]
+tsta=tsta-tsta[int(2/dt_si)]
 k = np.zeros((F.shape[1],trl))
 for ti in range(trl):
     steps = data['step_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices+4)))
-    indices = indices[indices<690]
+    indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices-3)))
+    indices = indices[indices<350]
     k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
 k[np.isnan(k)==1]=0
-ccn = np.corrcoef(k[:,22:])
-cco = np.corrcoef(k[:,0:22])
+ccn = np.corrcoef(k[:,17:])
+cco = np.corrcoef(k[:,0:17])
 cc = np.corrcoef(k[:,:])
 
 import plotting_functions as pf
@@ -68,12 +68,12 @@ X2 = []
 Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
-    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+    cl = np.where((stimDist[:,gi]<15) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
     #plt.plot(favg[0:80,cl,gi])
     if len(cl)>0:
         x = np.nanmean(cc[cl,:],axis=0)    
         x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
-        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+        nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<4000))
         y = AMP[1][nontarg,gi]
         yo = AMP[0][nontarg,gi]
         

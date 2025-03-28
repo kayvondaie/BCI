@@ -62,6 +62,7 @@ k = np.nanmean(F[:,:,0:],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 ccn = np.corrcoef(kn)
+cc = np.corrcoef(data['df_closedloop'].T)
 
 
 ei = 1;
@@ -71,7 +72,7 @@ Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
     cl = np.where((stimDist[:,gi]<10))[0]
-    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+    cl = np.where((stimDist[:,gi]<30))[0]
 
     if len(cl) > 0:
         #plt.plot(favg[0:80,cl,gi])
@@ -80,8 +81,8 @@ for gi in range(stimDist.shape[1]):
         x = np.dot(A.T,B)  
         
         nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
-        y = AMP[1][nontarg,gi]/np.nanmean(AMP[1][cl,gi])
-        yo = AMP[0][nontarg,gi]/np.nanmean(AMP[0][cl,gi])
+        y = AMP[1][nontarg,gi]
+        yo = AMP[0][nontarg,gi]
         
         
         #plt.scatter(x[nontarg],amp[nontarg,gi])

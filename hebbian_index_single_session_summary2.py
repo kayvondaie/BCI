@@ -6,12 +6,16 @@ list_of_dirs = session_counting.counter()
 si = 29;
 folder = str(list_of_dirs[si])
 #%%
-for si in range(len(ind)):
-    mouse = list_of_dirs['Mouse'][ind[si]]
-    session = list_of_dirs['Session'][ind[si]]
+XX = []
+YY = []
+session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Has data_main.npy']==True))[0]
+#session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
+for sii in range(len(session_inds)):
+    mouse = list_of_dirs['Mouse'][session_inds[sii]]
+    session = list_of_dirs['Session'][session_inds[sii]]
     folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
     photostim_keys = ['stimDist', 'favg_raw']
-    bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si']
+    bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si','step_time']
     data = ddct.load_hdf5(folder,bci_keys,photostim_keys )
     
     AMP = []
@@ -32,9 +36,10 @@ for si in range(len(ind)):
         before = np.floor(0.2/dt_si)
         artifact = np.nanmean(np.nanmean(favg_raw,axis=2),axis=1)
         artifact = artifact - np.nanmean(artifact[0:4])
-        artifact = np.where(artifact > 5)[0]
-        pre = (int(artifact[0]-before),int(artifact[0]-1))
-        post = (int(artifact[-1]+1),int(artifact[-1]+after))
+        artifact = np.where(artifact > .5)[0]
+        artifact = artifact[artifact<40]
+        pre = (int(artifact[0]-before),int(artifact[0]-2))
+        post = (int(artifact[-1]+2),int(artifact[-1]+after))
         favg[artifact, :, :] = np.nan
         
         favg = np.apply_along_axis(
@@ -59,9 +64,9 @@ for si in range(len(ind)):
     df = data['df_closedloop']
     cc = np.corrcoef(df)
     F = data['F']
-    ko = np.nanmean(F[120:360,:,0:40],axis=0)
+    ko = np.nanmean(F[120:360,:,0:10],axis=0)
     kn = np.nanmean(F[120:360,:,40:],axis=0)
-    k = np.nanmean(F[120:360,:,:],axis=0)
+    k = np.nanmean(F[120:360,:,40:60],axis=0)
     cc = np.corrcoef(k)
     cco = np.corrcoef(ko)
     ccn = np.corrcoef(kn)
@@ -121,6 +126,81 @@ for si in range(len(ind)):
     plt.tight_layout()
     plt.title(data['mouse'] + ' ' + data['session'])
     plt.title(data['mouse'] + ' ' + data['session'])
-    name = mouse + session + 'w_vs_corr'
-    folder = 'C:/Users/kayvon.daie/OneDrive - Allen Institute/Documents/Data/Figures 2025/' + name +'.png'
-    fig.savefig(folder, format='png')
+    XX.append(X)
+    YY.append(Y-Yo)
+    
+    
+    # F = data['F']
+    # trl = F.shape[2]
+    # tsta = np.arange(0,12,data['dt_si'])
+    # tsta=tsta-tsta[120]
+    # k = np.zeros((F.shape[1],trl))
+    # for ti in range(trl):
+    #     steps = data['step_time'][ti]
+    #     indices = np.searchsorted(tsta, steps)
+    #     indices = np.sort(np.concatenate((indices,indices-1,indices-2,indices+4)))
+    #     indices = indices[indices<690]
+    #     k[:,ti] = np.nanmean(F[indices,:,ti],axis=0)
+    # k[np.isnan(k)==1]=0
+    # ccn = np.corrcoef(k[:,22:])
+    # cco = np.corrcoef(k[:,0:22])
+    # cc = np.corrcoef(k[:,:])
+
+    # import plotting_functions as pf
+
+    # ei = 1;
+    # X = []
+    # X2 = []
+    # Y = []
+    # Yo = []
+    # for gi in range(stimDist.shape[1]):
+    #     cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> .1)))[0]
+    #     #plt.plot(favg[0:80,cl,gi])
+    #     if len(cl)>0:
+    #         x = np.nanmean(cc[cl,:],axis=0)    
+    #         x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
+    #         nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+    #         y = AMP[1][nontarg,gi]
+    #         yo = AMP[0][nontarg,gi]
+            
+    #         #plt.scatter(x[nontarg],amp[nontarg,gi])
+    #         X.append(x[nontarg])
+    #         X2.append(x2[nontarg])
+    #         Y.append(y)
+    #         Yo.append(yo)
+
+
+
+    # X = np.concatenate(X)
+    # X2 = np.concatenate(X2)
+    # Y = np.concatenate(Y,axis=1)
+    # Yo = np.concatenate(Yo,axis=1)
+    # plt.subplot(231)
+    # pf.mean_bin_plot(X,Yo,5,1,1,'k')
+    # plt.xlabel('Pre-post correlation')
+    # plt.ylabel('$W_{i,j}$')
+    # plt.title('Before learning')
+
+    # plt.subplot(234)
+    # pf.mean_bin_plot(X,Y,5,1,1,'k')
+    # plt.xlabel('Pre-post correlation')
+    # plt.ylabel('$W_{i,j}$')
+    # plt.title('After learning')
+
+    # plt.subplot(132)
+    # pf.mean_bin_plot(X,Y-Yo,5,1,1,'k')
+    # plt.xlabel('Pre-post correlation')
+    # plt.ylabel('$\Delta W_{i,j}$')
+    # plt.tight_layout()
+
+    # plt.subplot(133)
+    # pf.mean_bin_plot(X2,Y-Yo,6,1,1,'k')
+    # plt.xlabel('Pre-post correlation')
+    # plt.ylabel('$\Delta W_{i,j}$')
+    # plt.tight_layout()
+    # plt.title(data['mouse'] + ' ' + data['session'])
+    # plt.title(data['mouse'] + ' ' + data['session'])
+    
+    # name = mouse + session + 'w_vs_corr_lickport'
+    # folder = 'C:/Users/kayvon.daie/OneDrive - Allen Institute/Documents/Data/Figures 2025/' + name +'.png'
+    # fig.savefig(folder, format='png')

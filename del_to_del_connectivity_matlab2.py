@@ -12,7 +12,7 @@ except:
     !pip install mat73
     import mat73
  
-mypath2 = 'G:/My Drive/Learning rules/BCI_data/combined_new_old_060524.mat' 
+mypath2 = 'H:/My Drive/Learning rules/BCI_data/combined_new_old_060524.mat' 
 data_dict = mat73.loadmat(mypath2)
 #data = data_combined['data']
 #%%

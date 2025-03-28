@@ -159,34 +159,41 @@ def main(folder, index=None):
     if os.path.isdir(folder +r'/suite2p_spont/'):
         data['spont'] = np.load(folder +r'/suite2p_spont/plane0/F.npy', allow_pickle=True)
     
-    if os.path.isdir(folder +r'/suite2p_spont/'):
-        # Load iscell, stat, F
-        iscell_spont = np.load(folder + r'/suite2p_spont/plane0/iscell.npy', allow_pickle=True)
-        stat_spont   = np.load(folder + r'/suite2p_spont/plane0/stat.npy',   allow_pickle=True)
-        F_spont      = np.load(folder + r'/suite2p_spont/plane0/F.npy',      allow_pickle=True)
     
-        # Subselect real cells
-        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
-        F_spont = F_spont[cells_spont, :]
-        stat_spont = stat_spont[cells_spont]
+    # Mapping of data keys to possible spontaneous folder names
+    folder_mapping = {
+        'spont': 'suite2p_spont',
+        'spont_pre': 'suite2p_spont_pre',
+        'spont_post': 'suite2p_spont_post'
+    }
     
-        # Store in data dict
-        data['spont'] = F_spont
-        
-        
-    if os.path.isdir(folder +r'/suite2p_spont2/'):
-        # Load iscell, stat, F
-        iscell_spont = np.load(folder + r'/suite2p_spont2/plane0/iscell.npy', allow_pickle=True)
-        stat_spont   = np.load(folder + r'/suite2p_spont2/plane0/stat.npy',   allow_pickle=True)
-        F_spont      = np.load(folder + r'/suite2p_spont2/plane0/F.npy',      allow_pickle=True)
+    # Iterate over each candidate folder
+    for key, folder_name in folder_mapping.items():
+        folder_path = os.path.join(folder, folder_name)
+        if os.path.isdir(folder_path):
+            print(f"Loading {key} data from {folder_path}")
+            
+            # Construct file paths
+            iscell_path = os.path.join(folder_path, 'plane0', 'iscell.npy')
+            stat_path   = os.path.join(folder_path, 'plane0', 'stat.npy')
+            F_path      = os.path.join(folder_path, 'plane0', 'F.npy')
+            
+            # Load files if they exist
+            if os.path.exists(iscell_path) and os.path.exists(stat_path) and os.path.exists(F_path):
+                iscell_data = np.load(iscell_path, allow_pickle=True)
+                stat_data   = np.load(stat_path, allow_pickle=True)
+                F_data      = np.load(F_path, allow_pickle=True)
+                
+                # Subselect real cells based on the iscell array
+                cells_idx = np.where(np.asarray(iscell_data)[:, 0] == 1)[0]
+                F_data = F_data[cells_idx, :]
+                stat_data = stat_data[cells_idx]
+                
+                # Save processed data in the dictionary with a key corresponding to the folder name
+                data[key] = F_data
+            else:
+                print(f"Required files not found in {folder_path}")
     
-        # Subselect real cells
-        cells_spont = np.where(np.asarray(iscell_spont)[:,0] == 1)[0]
-        F_spont = F_spont[cells_spont, :]
-        stat_spont = stat_spont[cells_spont]
-    
-        # Store in data dict
-        data['spont2'] = F_spont
         
 
     #behavioral data
@@ -532,8 +539,8 @@ def create_zaber_info(folder,base,ops,dt_si):
     trial_times = np.array(trial_times)
     L = len(trial_times)
     
-    trial_times = ops['frames_per_file']*dt_si
-    trial_times = trial_times[0:L]
+    # trial_times = ops['frames_per_file']*dt_si
+    # trial_times = trial_times[0:L]
     tt = np.cumsum(trial_times)
     tt = np.insert(tt,0,0)
     steps = zaber['zaber_move_forward'];
@@ -801,6 +808,7 @@ def process_photostim(folder, subfolder, data, index):
     Ftrace = np.load(folder + subfolder + 'F.npy', allow_pickle=True)
     cells = np.where(np.asarray(iscell)[:,0]==1)[0]
     Ftrace = Ftrace[cells,:]
+    Ftrace_copy = Ftrace.copy()
     stat = stat[cells]
     
     ops = np.load(folder + subfolder + 'ops.npy', allow_pickle=True).tolist()
@@ -809,6 +817,7 @@ def process_photostim(folder, subfolder, data, index):
     # Set the key name as 'photostim', 'photostim2', etc.
     key_name = f'photostim{index if index > 1 else ""}'
     data[key_name] = dict()
+    data[key_name]['Ftrace'] = Ftrace_copy
     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
@@ -822,7 +831,8 @@ def process_photostim(folder, subfolder, data, index):
         data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
         data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
         data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
-
+    
+    
     # Remove redundant keys
     keys_to_remove = ['Fstim_raw']
     for key in keys_to_remove:
