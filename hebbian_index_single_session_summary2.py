@@ -6,9 +6,13 @@ list_of_dirs = session_counting.counter()
 si = 29;
 folder = str(list_of_dirs[si])
 #%%
-for si in range(len(ind)):
-    mouse = list_of_dirs['Mouse'][ind[si]]
-    session = list_of_dirs['Session'][ind[si]]
+XX = []
+YY = []
+session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Has data_main.npy']==True))[0]
+#session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
+for sii in range(len(session_inds)):
+    mouse = list_of_dirs['Mouse'][session_inds[sii]]
+    session = list_of_dirs['Session'][session_inds[sii]]
     folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
     photostim_keys = ['stimDist', 'favg_raw']
     bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si','step_time']
@@ -60,9 +64,9 @@ for si in range(len(ind)):
     df = data['df_closedloop']
     cc = np.corrcoef(df)
     F = data['F']
-    ko = np.nanmean(F[120:360,:,0:40],axis=0)
+    ko = np.nanmean(F[120:360,:,0:10],axis=0)
     kn = np.nanmean(F[120:360,:,40:],axis=0)
-    k = np.nanmean(F[120:360,:,:],axis=0)
+    k = np.nanmean(F[120:360,:,40:60],axis=0)
     cc = np.corrcoef(k)
     cco = np.corrcoef(ko)
     ccn = np.corrcoef(kn)
@@ -122,9 +126,8 @@ for si in range(len(ind)):
     plt.tight_layout()
     plt.title(data['mouse'] + ' ' + data['session'])
     plt.title(data['mouse'] + ' ' + data['session'])
-    name = mouse + session + 'w_vs_corr'
-    folder = 'C:/Users/kayvon.daie/OneDrive - Allen Institute/Documents/Data/Figures 2025/' + name +'.png'
-    fig.savefig(folder, format='png')
+    XX.append(X)
+    YY.append(Y-Yo)
     
     
     # F = data['F']

@@ -9,8 +9,6 @@ import h5py
 import matplotlib.pyplot as plt
 import os
 import json
-import data_dict_create_module_test as ddc
-
 
 # Path to your HDF5 file
 file_dff             = 'C:/Users/kayvon.daie/Documents/data/BCI93/740369_2025-02-04_17-33-11_dff.h5'
@@ -70,9 +68,9 @@ ops['frames_per_file'] = []
 ops2['frames_per_file'] = []
 for i in range(len(matching_tifs)):
     tif_start, tif_end = tif_data[matching_tifs[i]]  # Get start and end frames
-    #ops['frames_per_file'].append(tif_end - tif_start)
+    ops['frames_per_file'].append(tif_end - tif_start)
     ind = list(range(tif_start,tif_end));
-    ops['frames_per_file'].append(len(ind)+1)
+    ops2['frames_per_file'].append(len(ind))
     # Extract the corresponding frames from Ftrace
     extracted_frames = Ftrace[:, ind[0]-5:ind[-1]+ 1]  # All neurons, frames in range
     
@@ -180,7 +178,115 @@ for ci in range(pixelmasks.shape[0]):
 
 #%%
 #trip detection doesn't work, expects raw fluorescence which isn't available in the CO pipeline (yet?)
-epoch_start,_ = tif_data[matching_tifs[0]]
-_,epoch_end = tif_data[matching_tifs[-1]]
-F = Ftrace.copy()[:,epoch_start:epoch_end]*20
-Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw = ddc.stimDist_single_cell(ops,F,siHeader,stat)
+# Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw = ddc.stimDist_single_cell(ops,Ftrace.copy()*20,siHeader,stat)
+
+#%%
+deg = siHeader['metadata']['hRoiManager']['imagingFovDeg']
+g = [i for i in range(len(deg)) if deg.startswith(" ",i)]
+gg = [i for i in range(len(deg)) if deg.startswith(";",i)]
+for i in gg:
+    g.append(i)
+g = np.sort(g)
+num = [];
+for i in range(len(g)-1):
+    num.append(float(deg[g[i]+1:g[i+1]]))
+dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']),int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+degRange = (num[4] - num[0],num[1] - num[5])
+#degRange = np.max(num) - np.min(num)
+#pixPerDeg = dim/degRange
+pixPerDeg = np.array(dim) / np.array(degRange)
+
+centroidX = []
+centroidY = []
+for i in range(len(stat)):
+    centroidX.append(np.mean(stat[i]['xpix']))
+    centroidY.append(np.mean(stat[i]['ypix']))
+
+favg = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
+favg_raw = np.zeros((Fstim.shape[0],Fstim.shape[1],len(photostim_groups)))
+stimDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
+slmDist = np.zeros([Fstim.shape[1],len(photostim_groups)])
+
+coordinates = photostim_groups[0]['rois'][1]['scanfields']['slmPattern']
+coordinates = np.array([[0, 0, 0, 0]])
+coordinates = np.asarray(coordinates)
+if np.ndim(coordinates) == 1:
+    coordinates = coordinates.reshape(1,-1)
+xy = coordinates[:,:2] + photostim_groups[0]['rois'][1]['scanfields']['centerXY']
+stimPos = np.zeros(np.shape(xy))
+stimPosition = np.zeros([stimPos.shape[0],stimPos.shape[1],len(photostim_groups)])
+
+#%%
+seq = seq[0:Fstim.shape[2]]
+for gi in range(len(photostim_groups)):        
+    coordinates = photostim_groups[gi]['rois'][1]['scanfields']['slmPattern']
+    coordinates = np.array([[0, 0, 0, 0]])
+    coordinates = np.asarray(coordinates)
+    if np.ndim(coordinates) == 1:
+        coordinates = np.asarray(coordinates)
+        coordinates = coordinates.reshape(1,-1)
+    galvo = photostim_groups[gi]['rois'][1]['scanfields']['centerXY']
+    
+    coordinates = np.asarray(coordinates)
+
+    xy = coordinates[:,:2] + galvo
+    xygalvo = coordinates[:,:2]*0 + galvo
+    stimPos = np.zeros(np.shape(xy))
+    galvoPos = np.zeros(np.shape(xy))
+    for i in range(np.shape(xy)[0]):
+        stimPos[i,:] = np.array(xy[i,:]-[num[-1], num[0]])*pixPerDeg
+        galvoPos[i,:] = np.array(xygalvo[i,:]-[num[-1], num[0]])*pixPerDeg
+    sd = np.zeros([np.shape(xy)[0],favg.shape[1]])        
+    for i in range(np.shape(xy)[0]):
+        for j in range(favg.shape[1]):
+            sd[i,j] = np.sqrt(sum((stimPos[i,:] - np.asarray([centroidX[j], centroidY[j]]))**2))
+            slmDist[j,gi] = np.sqrt(sum((galvoPos[i,:] - np.asarray([centroidX[j], centroidY[j]]))**2))                
+    stimDist[:,gi] = np.min(sd,axis=0)
+    ind = np.where(seq == gi+1)[0]
+    favg[:,:,gi] = np.nanmean(Fstim[:,:,ind],axis = 2)
+    stimPosition[:,:,gi] = stimPos
+#%%
+plt.plot(np.nanmean(np.nanmean(favg,axis=2),axis=1))
+#%%
+amp = np.nanmean(favg[11:18,:,:],axis=0) - np.nanmean(favg[0:4,:,:],axis=0)
+plt.plot(stimDist.flatten(),amp.flatten(),'k.')
+plt.xlabel('Distance from photostim')
+plt.ylabel('Response amp.')
+#%%
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+mpl.rcParams['figure.dpi'] = 300
+dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
+t = np.arange(0,dt_si*favg.shape[0],dt_si)
+t = t - t[4]
+for gi in range(12):
+    plt.subplot(3,4,gi+1)
+    cl = np.argmin(stimDist[:,gi]);
+    plt.plot(t,favg[:,cl,gi])
+    plt.tight_layout()
+
+#%%
+strt = 0;
+numTrl = len(ops)
+AA = np.zeros(numTrl)
+ for ti in range(numTrl):
+     pre_pad = np.arange(strt-pre,strt)
+     ind = list(range(strt,strt+ops['frames_per_file'][ti]))
+     strt = ind[-1]+1
+     post_pad = np.arange(ind[-1]+1,ind[-1]+post)
+     ind = np.concatenate((pre_pad,np.asarray(ind)),axis=0)
+     ind = np.concatenate((ind,post_pad),axis = 0)
+     ind[ind > F.shape[1]-1] = F.shape[1]-1;
+     ind[ind < 0] = 0
+     stimID[ind[pre+1]] = seq[ti]
+     a = F[:,ind].T
+     g = F[:,ind].T
+     bl = np.tile(np.mean(a[0:pre,:],axis = 0),(a.shape[0],1))
+     a = (a-bl) / bl
+     if a.shape[0]>Fstim.shape[0]:
+         a = a[0:Fstim.shape[0],:]
+     Fstim[0:a.shape[0],:,ti] = a
+     try:
+         Fstim_raw[0:a.shape[0],:,ti] = g
+     except ValueError as e:
+         print(f"Skipping trial {ti} due to shape mismatch: {e}")

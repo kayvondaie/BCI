@@ -25,14 +25,14 @@ fstack = []
 for ti in range(trl):
     steps = data['step_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = indices[indices<800]
+    indices = indices[indices<F.shape[0]]
     v = np.zeros(len(tsta))
     v[indices] = 1;    
     vel.append(v[117:])
     
     steps = data['reward_time'][ti]
     indices = np.searchsorted(tsta, steps)
-    indices = indices[indices<800]
+    indices = indices[indices<F.shape[0]]
     v = np.zeros(len(tsta))
     v[indices] = 1;    
     rew.append(v[117:])
@@ -245,6 +245,11 @@ for k in range(n_top_to_keep):
 # --- Save results if desired ---
 np.save(folder + '/opt_pert_all_sess.npy', opt_pert)
 np.save(folder + './opt_pert_dot_prod_all_sess.npy', opt_pert_dot_prod)
+
+from scipy.io import savemat
+savemat(folder + '/opt_pert_all_sess.mat', {'opt_pert': opt_pert})
+savemat(folder + '/opt_pert_dot_prod_all_sess.mat', {'opt_pert_dot_prod': opt_pert_dot_prod})
+
 
 # # --- Plot dot product discriminability metric ---
 # fig, ax = plt.subplots()

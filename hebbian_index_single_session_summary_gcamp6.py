@@ -64,6 +64,9 @@ k = np.nanmean(F[40:80,:,0:],axis=0)
 cc = np.corrcoef(k)
 cco = np.corrcoef(ko)
 ccn = np.corrcoef(kn)
+cco = np.corrcoef(data['spont_pre'])
+ccn = np.corrcoef(data['spont_post'])
+cc = ccn
 
 
 ei = 1;
@@ -72,12 +75,12 @@ X2 = []
 Y = []
 Yo = []
 for gi in range(stimDist.shape[1]):
-    cl = np.where((stimDist[:,gi]<30) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> 1)))[0]
+    cl = np.where((stimDist[:,gi]<10) & (AMP[0][:,gi]> .1) * ((AMP[1][:,gi]> 1)))[0]
     #plt.plot(favg[0:80,cl,gi])
     
     x = np.nanmean(cc[cl,:],axis=0)    
     x2 = np.nanmean(ccn[cl,:] - cco[cl,:],axis=0)
-    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<1000))
+    nontarg = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<10000))
     y = AMP[1][nontarg,gi]
     yo = AMP[0][nontarg,gi]
     

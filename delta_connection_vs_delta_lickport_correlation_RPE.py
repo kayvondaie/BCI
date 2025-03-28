@@ -78,14 +78,14 @@ for ti in range(trl):
     steps = data['step_time'][ti]
     if len(steps) > 0:
         indices_steps = get_indices_around_steps(tsta, steps, pre=10, post=0)
-        indices_steps = indices_steps[indices_steps < 350]
+        indices_steps = indices_steps[indices_steps < F.shape[0]]
         kstep[:, ti] = np.nanmean(F[indices_steps, :, ti], axis=0)
 
     # Rewards regressor
     rewards = data['reward_time'][ti]
     if len(rewards) > 0:
         indices_rewards = get_indices_around_steps(tsta, rewards, pre=10, post=10)
-        indices_rewards = indices_rewards[indices_rewards < 350]
+        indices_rewards = indices_rewards[indices_rewards < F.shape[0]]
         krewards[:, ti] = np.nanmean(F[indices_rewards, :, ti], axis=0)
     
 k = np.nanmean(F[40:80,:,:],axis=0);
@@ -187,7 +187,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotting_functions as pf
 
-kf = KFold(n_splits=5, shuffle=True, random_state=42)
+kf = KFold(n_splits=5, shuffle=True)
 
 corr_train, p_train = [], []
 corr_test, p_test = [], []
