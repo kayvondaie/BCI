@@ -53,7 +53,7 @@ def mean_bin_plot(xx, yy, col, pltt, A, color):
     P = p
 
     #plt.title('P = ' + str(P))
-    return X, Y
+    return X, Y, p
 
 def tif_display(file_path,strt,skp):
    

@@ -1,5 +1,48 @@
 import sys
 from sklearn.decomposition import PCA
+from helper_functions1 import *  # or specific functions you use
+from helper_functions3 import *  # or specific functions you use
+import numpy as np
+import statsmodels.api as sm
+
+
+from collections import defaultdict
+from datetime import date, timedelta
+
+N_MIN_TRIALS = 0
+N_MAX_TRIALS = 40             # used to sub-select tuning over the first N trials
+D_NEAR = 30 #20                   # Distance from photostim (microns) to include as minumum distance for indirect
+D_FAR = 100                    # Distance from photostim (microns) to include as maximum distance for indirect
+D_DIRECT = 20                 # Distance from photostim (microns) if less than considered targeted by the photostim
+# D_DIRECT = 30                 # Distance from photostim (microns) if less than considered targeted by the photostim
+
+# Whether to do rows or columns first for MatLab unflattening, 0 makes 5c significant
+# MatLab and numpy have different resahpe conventions, mode 0 seems to make them equivalent
+UNFLATTED_MODE = 0   
+
+### Parameters that determine what is pre- and post- trial-start response
+SAMPLE_RATE = 20 # Hz
+T_START = -2 # Seconds, time relative to trial start where trial_start_fs begin
+TS_POST = (0, 10) # Seconds, time points to include for post-trial start average
+TS_PRE = (-2, -1) # Seconds, time points to include for pre-trial start average
+
+### PS Parameters ### (justified by looking at aggregate PS responses)
+IDXS_PRE_PS = np.arange(0, 5)   # Indexes in FStim to consider pre-photostim response (~250 ms)
+IDXS_PS = (5, 6, 7,)            # Indexes in FStim to consider photostim response (~150 ms of PS)
+IDXS_POST_PS = np.arange(8, 16) # Indexes in FStim to consider post-photostim response (~400 ms)
+# IDXS_PRE_PS = np.arange(0, 4)   # Indexes in FStim to consider pre-photostim response (~200 ms)
+# IDXS_PS = (4, 5, 6, 7, 8,)      # Indexes in FStim to consider photostim response (~250 ms of PS)
+# IDXS_POST_PS = np.arange(9, 16) # Indexes in FStim to consider post-photostim response (~350 ms)
+
+### PS Fitting Parameters ###
+N_MIN_EVENTS = 10
+N_MIN_DIRECT = 1 # CHANGE - 5 
+
+### Plot color conventions ###
+PAIR_COLORS = (0, 0, 0, 1, 1, 1, 2, 2, 3, 3, 4, 5) # Colored by mice (inclues (20, 21) pair)
+SESSION_COLORS = (0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5) # Colored by mice (inclues (20, 21) pair)
+
+MIN_P_VALUE = 1e-300
 
 def get_resp_ps_pred(session_idx, data_dict, ps_stats_params, paired_session_idx=None, fake_ps_data=False, verbose=False):
     """

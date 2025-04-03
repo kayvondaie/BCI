@@ -1,12 +1,23 @@
+from utils.helper_functions1 import default_ps_stats_params
+from utils.helper_functions1 import get_data_dict
+
+import pickle
+def run():
+    try:
+        with open('outputs/data_dict.pkl', 'rb') as f:
+            data_dict = get_data_dict()
+    except FileNotFoundError:
+        print('No saved data_dict found.')
+    # Cell 14
 from sklearn.decomposition import PCA
-from helper_functions1 import *  # or specific functions you use
-from helper_functions2 import *
 import copy
 
 session_idx = 11 # 11
 shuffle_events = True # Shuffle indirect events relvative to direct
 
 ps_stats_params = {
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
     'resp_ps_n_trials_back_mask': 1, # Skip PS response when neuron has been stimulated recently
     
     'direct_predictor_mode': 'sum', # None, sum, top_mags, top_devs, top_devs_center
@@ -15,7 +26,9 @@ ps_stats_params = {
     'direct_predictor_nan_mode': 'ignore_nans', # ignore_nans, eliminate_events, 
     'direct_input_mode': 'average', # average, average_equal_sessions, ones, minimum
 }
-ps_stats_params = default_ps_stats_params(data_dict, ps_stats_params)
+ps_stats_params = default_ps_stats_params(ps_stats_params)
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
 
 ps_events_group_idxs = data_dict['data']['seq'][session_idx] # This is matlab indexed so always need a -1 here
 ps_fs = data_dict['data']['Fstim'][session_idx] # (ps_times, n_neurons, n_ps_events,)
@@ -31,6 +44,8 @@ d_ps = unflatted_neurons_by_groups(d_ps_flat, n_neurons,)
 
 resp_ps, resp_ps_extras = compute_resp_ps_mask_prevs(
     ps_fs, ps_events_group_idxs, d_ps, ps_stats_params, return_extras=False
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
 )
 
 resp_ps_events = resp_ps_extras['resp_ps_events']
@@ -75,6 +90,8 @@ for group_idx in range(n_groups):
     slope, _, rvalue, pvalue, _ = add_regression_line(
         sum_dir_resp_ps_events.flatten(), indir_resp_ps_events.flatten(), 
         fit_intercept=ps_stats_params['direct_predictor_intercept_fit'], ax=plot_ax, color='k', zorder=5
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
     )
     
     group_event_slope[group_idx] = slope
@@ -90,6 +107,8 @@ for group_idx in range(n_groups):
         _ = add_regression_line(
             sum_dir_resp_ps_events[exemplar_neuron_idx, :], indir_resp_ps_events[exemplar_neuron_idx, :], 
             fit_intercept=ps_stats_params['direct_predictor_intercept_fit'], ax=ax5, color=c_vals[1], zorder=3, linestyle='dotted'
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         )
         
         ax5.scatter( # Also plot mean responses
@@ -105,11 +124,19 @@ for group_idx in range(n_groups):
         
         # Now compute fit for every neuron using direct sum as explainer
         ps_stats_params_copy = copy.deepcopy(ps_stats_params)
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         ps_stats_params_copy['direct_predictor_mode'] = 'sum'
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         ps_stats_params_copy['n_direct_predictors'] = 1
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         
         direct_predictors, direct_shift, predictor_extras = find_photostim_variation_predictors(
             dir_resp_ps_events, ps_stats_params_copy, return_extras=True,
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         )
         
         if shuffle_events:
@@ -128,12 +155,16 @@ for group_idx in range(n_groups):
             )
             
         slope_idx = 1 if ps_stats_params_copy['direct_predictor_intercept_fit'] else 0
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         
         for indir_resp_ps_events_it, neuron_color, cn_color, zorder_shift in plot_iterator:
         
             indirect_params, indirect_pvalues, fit_extras = fit_photostim_variation(
                 dir_resp_ps_events, indir_resp_ps_events_it, direct_predictors, direct_shift,
                 ps_stats_params_copy, verbose=True, return_extras=True,
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
             )
 
     #         ax8.scatter(indirect_params[:, slope_idx], -np.log10(indirect_pvalues[:, slope_idx]), marker='.', color=c_vals[2])
@@ -144,6 +175,8 @@ for group_idx in range(n_groups):
             
             direct_input = np.nanmean(sum_dir_resp_ps_events)
             indirect_prediction = photostim_predict(indirect_params, direct_input, ps_stats_params_copy)
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
 
             ax8p.scatter(resp_ps[indirect_idxs, group_idx], indirect_prediction, marker='.', color=neuron_color, zorder=zorder_shift)
             ax8p.scatter(resp_ps[indirect_idxs, group_idx][exemplar_neuron_idx], indirect_prediction[exemplar_neuron_idx], marker='o', color=cn_color, zorder=zorder_shift)
@@ -179,16 +212,22 @@ for group_idx in range(n_groups):
         
         direct_predictors, direct_shift, predictor_extras = find_photostim_variation_predictors(
             dir_resp_ps_events, ps_stats_params, return_extras=True,
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         )
         indirect_params, indirect_pvalues, fit_extras = fit_photostim_variation(
             dir_resp_ps_events, indir_resp_ps_events, direct_predictors, direct_shift,
             ps_stats_params, verbose=True, return_extras=True,
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         )
         
         # (n_direct_predictors, n_events) <- (n_direct_predictors, n_direct) x (n_direct, n_events)
         direct_predictors_events = nan_matmul(direct_predictors, dir_resp_ps_events)
         direct_input = np.nanmean(direct_predictors_events, axis=-1) # (n_direct_predictors,)
         indirect_prediction = photostim_predict(indirect_params, direct_input, ps_stats_params)
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         
         # Show diversity in direct stimulations
         max_val = np.nanmax(np.abs(np.array(resp_ps_events[group_idx])[direct_idxs, :]))
@@ -207,9 +246,13 @@ for group_idx in range(n_groups):
         ax7pp.set_xlabel('Pred. dirs.')
     
         slope_idx = 1 if ps_stats_params['direct_predictor_intercept_fit'] else 0
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
         
         for direct_max_idx in range(ps_stats_params['n_direct_predictors']):
             if ps_stats_params['direct_predictor_mode'] == 'top_mags': # neurons with largest L2 mag across events
+    with open('outputs/ps_stats_params.pkl', 'wb') as f:
+        pickle.dump(ps_stats_params, f)
                 label = 'Max Neuron {}'.format(direct_max_idx)
             elif ps_stats_params['direct_predictor_mode'] in ('top_devs', 'top_devs_center'): 
                 label = 'Dev dir {}'.format(direct_max_idx)
@@ -240,3 +283,7 @@ ax6.set_ylabel('slope of group\'s event resp_ps')
 ax6.axvline(0.0, color='lightgrey', zorder=-5, linestyle='dashed')
 ax6.axhline(0.0, color='lightgrey', zorder=-5, linestyle='dashed')
 ax6.axvline(1.0, color='lightgrey', zorder=-5, linestyle='dashed')
+
+    print("✅ setup_analysis ran successfully.")
+if __name__ == '__main__':
+    run()

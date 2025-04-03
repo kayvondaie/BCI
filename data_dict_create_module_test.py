@@ -21,93 +21,71 @@ def main(folder, index=None):
     Parameters:
         folder (str): Path to the folder containing data.
         index (int or None): Index for the photostim subfolder (e.g., 2 for photostim2). Defaults to None.
+        bci_folder_name (str): Folder name for the BCI dataset (e.g., 'suite2p_BCI' or 'suite2p_ch1').
 
     Returns:
         dict: Processed data dictionary.
     """
     
-    data = dict()
+    data = dict()    
+    bci_folder = os.path.join(folder, 'suite2p_BCI', 'plane0')
     
-    # BCI data
-    if os.path.isdir(folder +r'/suite2p_BCI/'):
-        iscell = np.load(folder + r'/suite2p_BCI/plane0/iscell.npy', allow_pickle=True)
-        stat = np.load(folder + r'/suite2p_BCI/plane0/stat.npy', allow_pickle=True)        
-        Ftrace = np.load(folder +r'/suite2p_BCI/plane0/F.npy', allow_pickle=True)
-        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
-        Ftrace = Ftrace[cells,:]
+    if os.path.isdir(bci_folder):
+        iscell = np.load(os.path.join(bci_folder, 'iscell.npy'), allow_pickle=True)
+        stat = np.load(os.path.join(bci_folder, 'stat.npy'), allow_pickle=True)
+        Ftrace = np.load(os.path.join(bci_folder, 'F.npy'), allow_pickle=True)
+        cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
+        Ftrace = Ftrace[cells, :]
         stat = stat[cells]
-        ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
+        ops = np.load(os.path.join(bci_folder, 'ops.npy'), allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
-    elif os.path.isdir(folder +r'/suite2p_BCI_green/'):
-        iscell = np.load(folder + r'/suite2p_BCI_green/plane0/iscell.npy', allow_pickle=True)
-        stat = np.load(folder + r'/suite2p_BCI_green/plane0/stat.npy', allow_pickle=True)        
-        Ftrace = np.load(folder +r'/suite2p_BCI_green/plane0/F.npy', allow_pickle=True)
-        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
-        Ftrace = Ftrace[cells,:]
-        stat = stat[cells]
-        ops = np.load(folder + r'/suite2p_BCI_green/plane0/ops.npy', allow_pickle=True).tolist()
         
-        siHeader = np.load(folder + r'/suite2p_BCI_green/plane0/siHeader.npy', allow_pickle=True).tolist()
-    
-    data['dat_file'] = folder + r'/suite2p_BCI/plane0/'
-    slash_indices = [match.start() for match in re.finditer('/', folder)]
-    data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
-    data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
-    if os.path.isdir(folder +r'/suite2p_BCI/'):
-        siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist() 
-        dt_si = 1/float(siHeader['metadata']['hRoiManager']['scanVolumeRate']);
+        data['dat_file'] = bci_folder
+        slash_indices = [match.start() for match in re.finditer('/', folder)]
+        data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+        data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
+        
+        dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
         if dt_si < 0.05:
-            post = round(10/0.05 * 0.05/dt_si)
-            pre = round(2/0.05 * 0.05/dt_si)
+            post = round(10 / 0.05 * 0.05 / dt_si)
+            pre = round(2 / 0.05 * 0.05 / dt_si)
         else:
-            post = round(10/0.05)
-            pre = round(2/0.05)
+            post = round(10 / 0.05)
+            pre = round(2 / 0.05)
+
         data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
-        data['iscell'] = iscell;
-        # metadata        
-        
-        # create F and Fraw
-        data['F'], data['Fraw'],data['df_closedloop'],data['centroidX'],data['centroidY'] = create_BCI_F(Ftrace,ops,stat,pre,post);     
-        
-        # create dist, conditioned_neuron, conditioned_coordinates
-        data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'], data['cn_csv_index'] = find_conditioned_neurons(siHeader,stat)
-        data['dt_si'] = 1/float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
-        
+        data['iscell'] = iscell
+
+        data['F'], data['Fraw'], data['df_closedloop'], data['centroidX'], data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
+        data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'], data['cn_csv_index'] = find_conditioned_neurons(siHeader, stat)
+        data['dt_si'] = 1 / float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
+
         numtrl = data['F'].shape[2]
         BCI_thresholds = np.full((2, numtrl), np.nan)
-        siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
+        base = siHeader['siBase'] if isinstance(siHeader['siBase'], str) else siHeader['siBase'][0]
 
-        # Determine the base for file names
-        if isinstance(siHeader['siBase'], str):
-            base = siHeader['siBase']
-        else:
-            base = siHeader['siBase'][0]
-
-        # Iterate over trials and attempt to load the corresponding threshold files
         for i in range(numtrl):
             try:
-                st = folder + base + r'_threshold_' + str(i+1) + r'.mat'
-                
-                # Check if the file exists before trying to load it
+                st = os.path.join(folder, base + f'_threshold_{i+1}.mat')
                 if os.path.exists(st):
                     threshold_data = scipy.io.loadmat(st)
                     BCI_thresholds[:, i] = threshold_data['BCI_threshold'].flatten()
-                    
             except:
-                pass  # Ignore any exceptions and continue with the next iteration
+                pass
         data['BCI_thresholds'] = BCI_thresholds
-        pophys_subfolder = os.path.join(folder, 'pophys')
-        if os.path.isdir(pophys_subfolder):
-            csv_folder = pophys_subfolder
-        else:
-            csv_folder = folder
-        csv_files = glob.glob(os.path.join(csv_folder, base+'_IntegrationRois' + '_*.csv'))
+
+        csv_folder = os.path.join(folder, 'pophys') if os.path.isdir(os.path.join(folder, 'pophys')) else folder
+        csv_files = glob.glob(os.path.join(csv_folder, base + '_IntegrationRois_*.csv'))
         csv_files = sorted(csv_files, key=lambda x: int(x.split('_')[-1].split('.')[0]))
-        csv_data = []
-        for i in range(len(csv_files)):
-            csv_file = csv_files[i]
-            csv_data.append(pd.read_csv(csv_file))        
+        csv_data = [pd.read_csv(f) for f in csv_files]
         data['roi_csv'] = np.concatenate(csv_data)
+        # If BCI data was processed, we know 'pre' and 'post' exist:
+        if 'F' in data:
+            ch1_data = extract_ch1_data(folder, pre, post)
+            if ch1_data:
+                data['ch1'] = ch1_data
+
+
     
     # photostim data
     if os.path.isdir(folder +r'/suite2p_photostim/'):
@@ -250,12 +228,19 @@ def main(folder, index=None):
     non_photostim_dict = {k: v for k, v in data.items() if k not in photostim_keys}
     
     if len(non_photostim_dict) > 0:
-        # Optionally name these "data_main.*" or something else
-        main_npy_filename = "data_main.npy"
+        # Add suffix to distinguish different BCI folders
+        #suffix = bci_folder_name.replace('suite2p_', '')  # 'BCI', 'ch1', etc.
+        suffix = 'BCI'
+        mouse = data.get('mouse', 'unknownmouse')
+        session = data.get('session', 'unknownsession')
+    
+        # Construct file names like: data_main_mouse123_sess456_BCI.npy
+        main_npy_filename = f"data_main_{mouse}_{session}_{suffix}.npy"
+        main_h5_filename = f"data_main_{mouse}_{session}_{suffix}.h5"
         main_npy_path = os.path.join(folder, main_npy_filename)
-        main_h5_filename = "data_main.h5"
         main_h5_path = os.path.join(folder, main_h5_filename)
     
+        # Save main (non-photostim) data
         with open(main_npy_path, 'wb') as f:
             pickle.dump(non_photostim_dict, f, protocol=4)
         print(f"[MAIN] Non-photostim data saved as pickle: {main_npy_path}")
@@ -264,6 +249,8 @@ def main(folder, index=None):
         print(f"[MAIN] Non-photostim data saved as HDF5:   {main_h5_path}")
     else:
         print("No non-photostim data found; skipping main data save.")
+
+        
     # --------------------------------------------------------------------
 
 
@@ -967,3 +954,36 @@ def load_hdf5_2(folder, bci_keys=None, photostim_keys=None):
     return data
 
 
+def extract_ch1_data(folder, pre, post):
+    """
+    Extracts data from suite2p_ch1/plane0 if it exists and returns it as a sub-dictionary.
+    """
+    import os
+    import numpy as np
+
+    ch1_path = os.path.join(folder, 'suite2p_ch1', 'plane0')
+    if not os.path.isdir(ch1_path):
+        print("No suite2p_ch1/plane0 folder found — skipping ch1 data.")
+        return None
+
+    try:
+        iscell = np.load(os.path.join(ch1_path, 'iscell.npy'), allow_pickle=True)
+        stat = np.load(os.path.join(ch1_path, 'stat.npy'), allow_pickle=True)
+        Ftrace = np.load(os.path.join(ch1_path, 'F.npy'), allow_pickle=True)
+        ops = np.load(os.path.join(ch1_path, 'ops.npy'), allow_pickle=True).tolist()
+
+        cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
+        Ftrace = Ftrace[cells, :]
+        stat = stat[cells]
+
+        ch1_data = {}
+        ch1_data['F'], ch1_data['Fraw'], ch1_data['df_closedloop'], ch1_data['centroidX'], ch1_data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
+        ch1_data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
+        ch1_data['iscell'] = iscell
+
+        print("Loaded and processed suite2p_ch1 data.")
+        return ch1_data
+
+    except Exception as e:
+        print(f"Error loading suite2p_ch1 data: {e}")
+        return None
