@@ -20,7 +20,9 @@ data_dict = mat73.loadmat(mypath)
 
 #%%
 
-
+from scipy.stats import linregress
+from sklearn.linear_model import LinearRegression
+import statsmodels.api as sm
 from helper_functions1 import *
 from helper_functions2 import *
 
@@ -499,7 +501,7 @@ ax6.axvline(1.0, color='lightgrey', zorder=-5, linestyle='dashed')
 from sklearn.decomposition import PCA
 import copy
 
-session_idx = 12 # 11
+session_idx = 11 # 11
 shuffle_events = True # Shuffle indirect events relvative to direct
 
 ps_stats_params = {
@@ -540,7 +542,7 @@ group_event_rsquared = np.zeros((n_groups,))
 #for group_idx in range(exemplar_group_idx + 1):
 group_idx = exemplar_group_idx
 direct_idxs = np.where(d_ps[:, group_idx] < D_DIRECT)[0]
-indirect_idxs = np.where(np.logical_and(d_ps[:, group_idx] > 30, d_ps[:, group_idx] < 2000))[0]
+indirect_idxs = np.where(np.logical_and(d_ps[:, group_idx] > -10, d_ps[:, group_idx] < 2000))[0]
 
 dir_resp_ps_events = np.array(resp_ps_events[group_idx])[direct_idxs, :] # (n_direct, n_events,)
 indir_resp_ps_events = np.array(resp_ps_events[group_idx])[indirect_idxs, :] # (n_indirect, n_events,)

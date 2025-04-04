@@ -633,7 +633,7 @@ def siHeader_get(folder):
  
     return siHeader
 
-def stimDist_single_cell(ops,F,siHeader,stat,offset = 0):
+def stimDist_single_cell_old(ops,F,siHeader,stat,offset = 0):
  
     trip = np.std(F,axis=0)
     trip = np.where(trip<10)[0]
@@ -987,3 +987,139 @@ def extract_ch1_data(folder, pre, post):
     except Exception as e:
         print(f"Error loading suite2p_ch1 data: {e}")
         return None
+
+
+import numpy as np
+
+def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
+    trip = np.std(F, axis=0)
+    trip = np.where(trip < 10)[0]
+    extended_trip = np.concatenate((trip, trip + 1))
+    trip = np.unique(extended_trip)
+    trip[trip > F.shape[1] - 1] = F.shape[1] - 1
+    F[:, trip] = np.nan
+
+    numTrl = len(ops['frames_per_file'])
+    timepts = 69 * round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate']) / 16)
+    numCls = F.shape[0]
+    Fstim = np.full((timepts, numCls, numTrl), np.nan)
+    Fstim_raw = np.full((timepts, numCls, numTrl), np.nan)
+    strt = 0
+    pre = 5 * round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate']) / 16)
+    post = 20 * round(float(siHeader['metadata']['hRoiManager']['scanVolumeRate']) / 16)
+
+    photostim_groups = siHeader['metadata']['json']['RoiGroups']['photostimRoiGroups']
+    seq = siHeader['metadata']['hPhotostim']['sequenceSelectedStimuli']
+    seq_clean = seq.strip('[]')
+
+    if ';' in seq_clean:
+        list_nums = seq_clean.split(';')
+    else:
+        list_nums = seq_clean.split()
+
+    seq = [int(num) for num in list_nums if num]
+    seq = seq * 40
+    seqPos = int(siHeader['metadata']['hPhotostim']['sequencePosition']) - 1
+    seq = seq[seqPos:]
+    seq = np.asarray(seq)
+
+    if offset < 0:
+        seq = seq[-offset:]
+        print('offset is less than zero')
+        print(offset)
+    elif offset > 0:
+        seq = seq[:-offset]
+        print('offset is greater than zero')
+        print(offset)
+
+    stimID = np.zeros((F.shape[1],))
+    for ti in range(numTrl):
+        pre_pad = np.arange(strt - pre, strt)
+        ind = list(range(strt, strt + ops['frames_per_file'][ti]))
+        strt = ind[-1] + 1
+        post_pad = np.arange(ind[-1] + 1, ind[-1] + post)
+        ind = np.concatenate((pre_pad, np.asarray(ind)), axis=0)
+        ind = np.concatenate((ind, post_pad), axis=0)
+        ind[ind > F.shape[1] - 1] = F.shape[1] - 1
+        ind[ind < 0] = 0
+        stimID[ind[pre + 1]] = seq[ti]
+        a = F[:, ind].T
+        g = F[:, ind].T
+        bl = np.tile(np.mean(a[0:pre, :], axis=0), (a.shape[0], 1))
+        a = (a - bl) / bl
+        if a.shape[0] > Fstim.shape[0]:
+            a = a[0:Fstim.shape[0], :]
+        Fstim[0:a.shape[0], :, ti] = a
+        try:
+            Fstim_raw[0:a.shape[0], :, ti] = g
+        except ValueError as e:
+            print(f"Skipping trial {ti} due to shape mismatch: {e}")
+
+    if offset < 0:
+        Fstim = Fstim[:, :, :offset]
+        Fstim_raw = Fstim_raw[:, :, :offset]
+    elif offset > 0:
+        Fstim = Fstim[:, :, offset:]
+        Fstim_raw = Fstim_raw[:, :, offset:]
+
+    deg = siHeader['metadata']['hRoiManager']['imagingFovDeg']
+    g = [i for i in range(len(deg)) if deg.startswith(" ", i)]
+    gg = [i for i in range(len(deg)) if deg.startswith(";", i)]
+    for i in gg:
+        g.append(i)
+    g = np.sort(g)
+    num = []
+    for i in range(len(g) - 1):
+        num.append(float(deg[g[i] + 1:g[i + 1]]))
+    dim = int(siHeader['metadata']['hRoiManager']['linesPerFrame']), int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+    degRange = (num[4] - num[0], num[1] - num[5])
+    pixPerDeg = np.array(dim) / np.array(degRange)
+
+    centroidX = []
+    centroidY = []
+    for i in range(len(stat)):
+        centroidX.append(np.mean(stat[i]['xpix']))
+        centroidY.append(np.mean(stat[i]['ypix']))
+
+    favg = np.zeros((Fstim.shape[0], Fstim.shape[1], len(photostim_groups)))
+    favg_raw = np.zeros((Fstim.shape[0], Fstim.shape[1], len(photostim_groups)))
+    stimDist = np.zeros([Fstim.shape[1], len(photostim_groups)])
+    slmDist = np.zeros([Fstim.shape[1], len(photostim_groups)])
+    stimPosition = np.zeros((1, 2, len(photostim_groups)))
+
+    seq = seq[0:Fstim.shape[2]]
+    for gi in range(len(photostim_groups)):
+        xy = []
+        for i in range(len(photostim_groups[gi]['rois'])):
+            roi = photostim_groups[gi]['rois'][i]
+            if roi['scanfields']['stimulusFunction'] == 'scanimage.mroi.stimulusfunctions.logspiral':
+                xy.append(roi['scanfields']['centerXY'])
+
+        if len(xy) == 0:
+            continue
+
+        xy = np.array(xy)
+        stimPos = np.zeros(np.shape(xy))
+        galvoPos = np.zeros(np.shape(xy))
+
+        for i in range(np.shape(xy)[0]):
+            stimPos[i, :] = (xy[i, :] - [num[-1], num[0]]) * pixPerDeg
+            galvoPos[i, :] = (xy[i, :] - [num[-1], num[0]]) * pixPerDeg
+
+        sd = np.zeros([np.shape(xy)[0], favg.shape[1]])
+        for i in range(np.shape(xy)[0]):
+            for j in range(favg.shape[1]):
+                sd[i, j] = np.sqrt(np.sum((stimPos[i, :] - [centroidX[j], centroidY[j]]) ** 2))
+                slmDist[j, gi] = np.sqrt(np.sum((galvoPos[i, :] - [centroidX[j], centroidY[j]]) ** 2))
+
+        stimDist[:, gi] = np.min(sd, axis=0)
+
+        ind = np.where(seq == gi + 1)[0]
+        favg[:, :, gi] = np.nanmean(Fstim[:, :, ind], axis=2)
+        favg_raw[:, :, gi] = np.nanmean(Fstim_raw[:, :, ind], axis=2)
+
+        if stimPosition.shape[0] < stimPos.shape[0]:
+            stimPosition = np.pad(stimPosition, ((0, stimPos.shape[0] - stimPosition.shape[0]), (0, 0), (0, 0)), mode='constant')
+        stimPosition[:stimPos.shape[0], :, gi] = stimPos
+
+    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw
