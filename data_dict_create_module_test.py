@@ -808,7 +808,7 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
     data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
     data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
-    data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, 0)
+    data[key_name]['favg_raw'], data[key_name]['stim_params'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, 0)
     
     offset = seq_offset(data,key_name)
     if offset != 0:
@@ -817,7 +817,7 @@ def process_photostim(folder, subfolder, data, index):
         data[key_name]['Fstim'], data[key_name]['seq'], data[key_name]['favg'], data[key_name]['stimDist'], \
         data[key_name]['stimPosition'], data[key_name]['centroidX'], data[key_name]['centroidY'], \
         data[key_name]['slmDist'], data[key_name]['stimID'], data[key_name]['Fstim_raw'], \
-        data[key_name]['favg_raw'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
+        data[key_name]['favg_raw'], data[key_name]['stim_params'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, offset)
     
     
     # Remove redundant keys
@@ -989,8 +989,6 @@ def extract_ch1_data(folder, pre, post):
         return None
 
 
-import numpy as np
-
 def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
     trip = np.std(F, axis=0)
     trip = np.where(trip < 10)[0]
@@ -1086,14 +1084,21 @@ def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
     stimDist = np.zeros([Fstim.shape[1], len(photostim_groups)])
     slmDist = np.zeros([Fstim.shape[1], len(photostim_groups)])
     stimPosition = np.zeros((1, 2, len(photostim_groups)))
+    powers = [[] for _ in range(len(photostim_groups))]
+    durations = [[] for _ in range(len(photostim_groups))]
 
     seq = seq[0:Fstim.shape[2]]
     for gi in range(len(photostim_groups)):
         xy = []
+        total_duration = 0
         for i in range(len(photostim_groups[gi]['rois'])):
             roi = photostim_groups[gi]['rois'][i]
-            if roi['scanfields']['stimulusFunction'] == 'scanimage.mroi.stimulusfunctions.logspiral':
+            total_duration = total_duration + roi['scanfields']['duration']
+            if roi['scanfields']['stimulusFunction'] == 'scanimage.mroi.stimulusfunctions.logspiral' and roi['scanfields']['powers'] != 0:
                 xy.append(roi['scanfields']['centerXY'])
+                powers[gi].append(roi['scanfields']['powers'])
+                durations[gi].append(roi['scanfields']['duration'])
+
 
         if len(xy) == 0:
             continue
@@ -1121,5 +1126,16 @@ def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
         if stimPosition.shape[0] < stimPos.shape[0]:
             stimPosition = np.pad(stimPosition, ((0, stimPos.shape[0] - stimPosition.shape[0]), (0, 0), (0, 0)), mode='constant')
         stimPosition[:stimPos.shape[0], :, gi] = stimPos
-
-    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw
+    
+    dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
+    time = np.arange(0,favg.shape[0]*dt_si,dt_si)
+    time = time - time[pre]
+    stimParams = {
+    'powers': powers,
+    't_stim': 0,
+    'time': time,
+    'durations': durations,
+    'total_duration': total_duration,
+    }
+    
+    return Fstim, seq, favg, stimDist, stimPosition, centroidX, centroidY, slmDist, stimID, Fstim_raw, favg_raw, stimParams
