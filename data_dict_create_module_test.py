@@ -59,7 +59,9 @@ def main(folder, index=None):
         data['F'], data['Fraw'], data['df_closedloop'], data['centroidX'], data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
         data['dist'], data['conditioned_neuron_coordinates'], data['conditioned_neuron'], data['cn_csv_index'] = find_conditioned_neurons(siHeader, stat)
         data['dt_si'] = 1 / float(siHeader['metadata']['hRoiManager']['scanFrameRate'])
-
+        t_bci = np.arange(0,data['dt_si'] * data['F'].shape[0], dt_si)
+        t_bci = t_bci - t_bci[pre]
+        data['t_bci'] = t_bci
         numtrl = data['F'].shape[2]
         BCI_thresholds = np.full((2, numtrl), np.nan)
         base = siHeader['siBase'] if isinstance(siHeader['siBase'], str) else siHeader['siBase'][0]
@@ -199,7 +201,7 @@ def main(folder, index=None):
     # Define file paths
     base_file_path = os.path.join(folder, f"data_{data['mouse']}_{data['session']}")
     data_file_path = base_file_path + ".npy"
-    photostim_file_path = base_file_path + "_photostim.npy"
+    photostim_file_path = base_file_path + "_photostim" + data['mouse'] + "_" + data['session']+ ".npy"
  
     # Identify photostim keys
     photostim_keys = [k for k in data.keys() if k.startswith('photostim')]
@@ -210,9 +212,9 @@ def main(folder, index=None):
         # e.g., pkey = 'photostim', 'photostim2', etc.
         
         # Construct filenames
-        npy_filename = f"data_{pkey}.npy"
+        npy_filename = f"data_{pkey}"+ data['mouse'] + "_" + data['session']+  ".npy"
         npy_file_path = os.path.join(folder, npy_filename)
-        h5_filename = f"data_{pkey}.h5"
+        h5_filename = f"data_{pkey}" + data['mouse'] + "_" + data['session']+ ".h5"
         h5_file_path = os.path.join(folder, h5_filename)
     
         # Save as pickle .npy
@@ -841,14 +843,16 @@ def process_photostim(folder, subfolder, data, index):
     gc.collect()
 
 
-
+import pickle
 import h5py
+import numpy as np  # make sure this is imported
+
 def save_dict_to_hdf5(data_dict, hdf5_file_path):
     """
     Recursively save a Python dictionary to an HDF5 file.
     Keys that map to sub-dictionaries become HDF5 Groups,
     and keys mapping to array-like objects become Datasets.
-    Anything that cannot be directly converted is stored as string.
+    Anything that cannot be directly converted is stored as pickled bytes.
     """
     def recursively_save_dict_contents_to_group(h5file, path, dic):
         for key, item in dic.items():
@@ -858,15 +862,16 @@ def save_dict_to_hdf5(data_dict, hdf5_file_path):
                 subgroup = h5file.create_group(f"{path}/{key_clean}")
                 recursively_save_dict_contents_to_group(h5file, f"{path}/{key_clean}", item)
             else:
-                # Try creating a dataset
                 try:
                     h5file.create_dataset(f"{path}/{key_clean}", data=item)
-                except TypeError:
-                    # If it's not array-like, store as string
-                    h5file.create_dataset(f"{path}/{key_clean}", data=str(item))
+                except (TypeError, ValueError):
+                    # Fallback: pickle the object into bytes and store
+                    h5file.create_dataset(f"{path}/{key_clean}", data=np.void(pickle.dumps(item)))
 
+    # This must be at the root indentation level
     with h5py.File(hdf5_file_path, 'w') as h5file:
         recursively_save_dict_contents_to_group(h5file, '', data_dict)
+
 
 
 def load_hdf5(folder,bci_keys,photostim_keys):
