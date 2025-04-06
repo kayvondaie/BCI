@@ -28,6 +28,9 @@ def main(folder, index=None):
     """
     
     data = dict()    
+    slash_indices = [match.start() for match in re.finditer('/', folder)]
+    data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
+    data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
     bci_folder = os.path.join(folder, 'suite2p_BCI', 'plane0')
     
     if os.path.isdir(bci_folder):

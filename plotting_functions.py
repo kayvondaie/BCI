@@ -174,3 +174,74 @@ def show_rois_outline(ops, stat, roi_indices, roi_colors, ax=None):
     # Clean up plot
     plt.axis('off')
     
+
+def fixed_bin_plot(xx, yy, col=None, pltt=1, A=1, color='b', bins=None):
+    """
+    Bins data into fixed-width bins and plots the mean and SEM of y in each bin.
+    
+    Parameters:
+        xx (array-like): x-values
+        yy (array-like): y-values
+        col (int, optional): Number of bins to divide the x-range into. Ignored if `bins` is given.
+        pltt (int): If 1, make a plot. If not, just return values.
+        A (float): Divides y-values by A (e.g., for normalization).
+        color (str): Color for plotting.
+        bins (array-like, optional): Custom bin edges (overrides `col`).
+    
+    Returns:
+        X (ndarray): Mean x in each bin
+        Y (ndarray): Mean y in each bin
+        p (float): p-value of correlation between x and y
+    """
+    xx = np.ravel(xx).astype(float)
+    yy = np.ravel(yy).astype(float) / A
+    print(type(A))
+
+    # Remove NaNs
+    mask = ~np.isnan(xx) & ~np.isnan(yy)
+    x = xx[mask].astype(float)
+
+    y = yy[mask]
+
+    # Correlation
+    if len(x) < 2:
+        return np.array([]), np.array([]), np.nan
+
+    c_mat = np.corrcoef(x, y)
+    c = c_mat[0, 1]
+    p = np.corrcoef(x, y)[0, 1]
+
+    # Define bins
+    if bins is not None:
+        bins = np.asarray(bins)
+    else:
+        if col is None:
+            col = 5
+        bins = np.linspace(np.min(x), np.max(x), col + 1)
+
+    bin_indices = np.digitize(x, bins) - 1  # subtract 1 to get 0-based index
+
+    # Compute stats
+    X = []
+    Y = []
+    stdEr = []
+    for i in range(len(bins) - 1):
+        idx = bin_indices == i
+        if np.any(idx):
+            X.append(np.mean(x[idx]))
+            Y.append(np.mean(y[idx]))
+            stdEr.append(np.std(y[idx]) / np.sqrt(np.sum(idx)))
+        else:
+            X.append(np.nan)
+            Y.append(np.nan)
+            stdEr.append(np.nan)
+
+    X = np.array(X)
+    Y = np.array(Y)
+    stdEr = np.array(stdEr)
+
+    if pltt == 1:
+        plt.errorbar(X, Y, yerr=stdEr, marker='o', markersize=5,
+                     color=color, markerfacecolor=color)
+
+    return X, Y, p
