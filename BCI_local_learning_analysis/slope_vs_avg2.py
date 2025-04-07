@@ -498,10 +498,17 @@ ax6.axhline(0.0, color='lightgrey', zorder=-5, linestyle='dashed')
 ax6.axvline(1.0, color='lightgrey', zorder=-5, linestyle='dashed')
 
 #%%
+
+fig = plt.figure(figsize=(3,1.5))
+plt.rcParams.update({
+    'lines.linewidth': 0.7,
+    'lines.markersize': 2,
+    'font.size': 6
+})
 from sklearn.decomposition import PCA
 import copy
 
-session_idx = 11 # 11
+session_idx = 12 # 11
 shuffle_events = True # Shuffle indirect events relvative to direct
 
 ps_stats_params = {
@@ -525,6 +532,8 @@ n_groups = int(np.max(ps_events_group_idxs))
 
 d_ps_flat = data_dict['data']['x'][session_idx] # distance between a neuron and its nearest photostim point for each group (n_groups x n_neurons)
 d_ps = unflatted_neurons_by_groups(d_ps_flat, n_neurons,)
+y = data_dict['data']['y'][session_idx] # distance between a neuron and its nearest photostim point for each group (n_groups x n_neurons)
+y = unflatted_neurons_by_groups(y, n_neurons,)
 
 resp_ps, resp_ps_extras = compute_resp_ps_mask_prevs(
     ps_fs, ps_events_group_idxs, d_ps, ps_stats_params, return_extras=False
@@ -534,7 +543,7 @@ resp_ps_events = resp_ps_extras['resp_ps_events']
 
 
 # For each photostim event, sees how indirect responses are related to the direct response
-exemplar_group_idx = 17 # 0, 5
+exemplar_group_idx = 58 # 0, 5
 
 group_event_slope = np.zeros((n_groups,))
 group_event_rsquared = np.zeros((n_groups,))
@@ -542,7 +551,7 @@ group_event_rsquared = np.zeros((n_groups,))
 #for group_idx in range(exemplar_group_idx + 1):
 group_idx = exemplar_group_idx
 direct_idxs = np.where(d_ps[:, group_idx] < D_DIRECT)[0]
-indirect_idxs = np.where(np.logical_and(d_ps[:, group_idx] > -10, d_ps[:, group_idx] < 2000))[0]
+indirect_idxs = np.where(np.logical_and(d_ps[:, group_idx] > 30, d_ps[:, group_idx] < 2000))[0]
 
 dir_resp_ps_events = np.array(resp_ps_events[group_idx])[direct_idxs, :] # (n_direct, n_events,)
 indir_resp_ps_events = np.array(resp_ps_events[group_idx])[indirect_idxs, :] # (n_indirect, n_events,)
@@ -621,7 +630,7 @@ f_all = (f_all - bl)/bl
 
 
 
-num_top = 9
+num_top = 4
 f_big = f_all[:,bb[-num_top :]]
 bl = np.nanmean(f_big[0:4,:]);
 f_big= (f_big- bl)
@@ -642,3 +651,140 @@ plt.plot(sum_dir_resp_ps_events[cl,bb[-num_top :]],indir_resp_ps_events[cl,bb[-n
 plt.ylabel('$\Delta$F/F indir.')   
 plt.xlabel('$\Delta$F/F dir.')   
 plt.tight_layout()
+#%%
+# Preallocate output arrays
+group_event_slope = np.zeros((n_groups,))
+group_event_rsquared = np.zeros((n_groups,))
+all_group_pvals = []  # Will store arrays of shape (n_indirect,) for each group
+all_group_slopes = []  # Will store arrays of shape (n_indirect,) for each group
+
+for group_idx in range(n_groups):
+    direct_idxs = np.where(d_ps[:, group_idx] < D_DIRECT)[0]
+    indirect_idxs = np.where(np.logical_and(d_ps[:, group_idx] > -10, d_ps[:, group_idx] < 2000))[0]
+
+    if len(direct_idxs) == 0 or len(indirect_idxs) == 0:
+        # Skip empty groups
+        group_event_slope[group_idx] = np.nan
+        group_event_rsquared[group_idx] = np.nan
+        all_group_pvals.append(np.full((0,), np.nan))
+        continue
+
+    dir_resp_ps_events = np.array(resp_ps_events[group_idx])[direct_idxs, :]  # (n_direct, n_events)
+    indir_resp_ps_events = np.array(resp_ps_events[group_idx])[indirect_idxs, :]  # (n_indirect, n_events)
+
+    n_direct = dir_resp_ps_events.shape[0]
+    n_indirect = indir_resp_ps_events.shape[0]
+
+    # Get sum of direct responses
+    sum_dir_resp_ps_events = np.nansum(dir_resp_ps_events, axis=0, keepdims=True)
+    sum_dir_resp_ps_events = np.repeat(sum_dir_resp_ps_events, n_indirect, axis=0)
+
+    # Optional plot for a specific group
+    plot_ax = ax5 if group_idx == exemplar_group_idx else None
+
+    slope, _, rvalue, pvalue, _ = add_regression_line(
+        sum_dir_resp_ps_events.flatten(),
+        indir_resp_ps_events.flatten(),
+        fit_intercept=ps_stats_params['direct_predictor_intercept_fit'],
+        ax=plot_ax,
+        color='k',
+        zorder=5
+    )
+
+    group_event_slope[group_idx] = slope
+    group_event_rsquared[group_idx] = rvalue**2
+
+    # Get predictors
+    ps_stats_params_copy = copy.deepcopy(ps_stats_params)
+    ps_stats_params_copy['direct_predictor_mode'] = 'sum'
+    ps_stats_params_copy['n_direct_predictors'] = 1
+
+    direct_predictors, direct_shift, _ = find_photostim_variation_predictors(
+        dir_resp_ps_events,
+        ps_stats_params_copy,
+        return_extras=True
+    )
+
+    # Fit indirect responses
+    indirect_params, pvals, _ = fit_photostim_variation(
+        dir_resp_ps_events,
+        indir_resp_ps_events,
+        direct_predictors,
+        direct_shift,
+        ps_stats_params_copy
+    )
+
+    slope_idx = 1 if ps_stats_params_copy['direct_predictor_intercept_fit'] else 0
+    slopes = indirect_params[:, slope_idx]
+    all_group_pvals.append(pvals)
+    all_group_slopes.append(slopes)
+
+all_group_pvals = np.concatenate(all_group_pvals,axis=1)
+all_group_slopes = np.concatenate(all_group_slopes)
+
+
+bins = np.concatenate((np.arange(0, 100, 10), np.arange(100, 300, 25)))
+stimDist = d_ps.copy()
+amp = all_group_slopes.copy()
+pv = all_group_pvals.copy()
+frac_e = np.zeros((len(bins)-1,))
+frac_i = np.zeros((len(bins)-1,))
+for i in range(len(bins)-1):
+    ind = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]))[0]
+    inde = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]) & (pv.flatten() < 0.025) & (amp.flatten()>0))[0]    
+    indi = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]) & (pv.flatten() < 0.025) & (amp.flatten()<0))[0]    
+     
+    frac_i[i] = len(indi)/len(ind)
+    frac_e[i] = len(inde)/len(ind)
+    
+plt.bar(bins[0:2],frac_e[0:2],color=[.7,.7,.7],width=9)
+plt.bar(bins[2:-1],frac_e[2:],color='k',width=9)
+plt.bar(bins[0:-1],-frac_i,width=9,color='w',edgecolor='k')
+plt.xlabel('Distance from photostim. target (um)')
+plt.ylabel('Fraction significant')
+#plt.title(folder)
+
+#%%
+from scipy.stats import ttest_ind
+
+Fstim = data_dict['data']['Fstim'][session_idx] # (ps_times, n_neurons, n_ps_events,)
+f= data_dict['data']['Fstim'][session_idx] # (ps_times, n_neurons, n_ps_events,)
+#plt.scatter(stimDist[:,gi],-np.log(p_value))
+bins = [30,100]
+bins = np.linspace(0,200,10)
+bins = np.arange(0,300,10)
+bins = np.concatenate((np.arange(0, 100, 10), np.arange(100, 300, 25)))
+G = stimDist.shape[1]
+num_connect = np.zeros((len(bins)-1,G))
+frac_e = np.zeros((len(bins)-1,G))
+frac_i = np.zeros((len(bins)-1,G))
+frac_connect = np.zeros((len(bins)-1,G))
+pv = np.zeros((Fstim.shape[1],n_groups))
+amp = y
+for gi in range(G):        
+    seq = data_dict['data']['seq'][session_idx]-1 # This is matlab indexed so always need a -1 here
+    ind = np.where(seq == gi)[0][::]
+    post = np.nanmean(Fstim[9:12, :, ind], axis=0) 
+    pre  = np.nanmean(Fstim[0:4, :, ind], axis=0)
+    ind = np.where(np.sum(np.isnan(pre[0:4,:]),axis=0)==0)[0]
+    t_stat, p_value = ttest_ind(post[:,ind], pre[:,ind], axis=1)
+    cl = np.argmin(stimDist[:,gi])
+    cc = np.corrcoef(post[:,ind]-pre[:,ind])[:,cl]
+    
+    
+    pv[:,gi] = p_value
+frac_e = np.zeros((len(bins)-1,))
+frac_i = np.zeros((len(bins)-1,))
+for i in range(len(bins)-1):
+    ind = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]))[0]
+    inde = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]) & (pv.flatten() < 0.05) & (amp.flatten()>0))[0]    
+    indi = np.where((stimDist.flatten() > bins[i]) & (stimDist.flatten()<bins[i+1]) & (pv.flatten() < 0.05) & (amp.flatten()<0))[0]    
+     
+    frac_i[i] = len(indi)/len(ind)
+    frac_e[i] = len(inde)/len(ind)
+    
+plt.bar(bins[0:2],frac_e[0:2],color=[.7,.7,.7],width=9)
+plt.bar(bins[2:-1],frac_e[2:],color='k',width=9)
+plt.bar(bins[0:-1],-frac_i,width=9,color='w',edgecolor='k')
+plt.xlabel('Distance from photostim. target (um)')
+plt.ylabel('Fraction significant')
