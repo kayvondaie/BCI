@@ -1,0 +1,83 @@
+Mouse,Session,Status,Message
+BCI103,013025,skipped,already processed
+BCI103,013125,skipped,already processed
+BCI103,021025,skipped,already processed
+BCI103,021225,skipped,already processed
+BCI103,021325,skipped,already processed
+BCI103,021725,skipped,already processed
+BCI103,021925,skipped,already processed
+BCI104,012825,skipped,already processed
+BCI105,013025,skipped,already processed
+BCI105,020525,skipped,already processed
+BCI107,021025,skipped,already processed
+BCI107,021225,skipped,already processed
+BCI107,021325,skipped,already processed
+BCI107,021725,skipped,already processed
+BCI107,021925,skipped,already processed
+BCI107,031325,skipped,already processed
+BCI107,031425,skipped,already processed
+BCI107,031725,skipped,already processed
+BCI107,032425,skipped,already processed
+BCI107,032525,skipped,already processed
+BCI107,032625,skipped,already processed
+BCI107,033125,skipped,already processed
+BCI107,040725,skipped,already processed
+BCI107,040825,skipped,already processed
+BCI88,012725,skipped,already processed
+BCI93,012825,skipped,already processed
+BCI93,013025,skipped,already processed
+BCI93,013125,error,[WinError 3] The system cannot find the path specified: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI93\\013125\\pophys/'
+BCI93,021025,skipped,already processed
+BCI93,021225,skipped,already processed
+BCI93,021325,skipped,already processed
+BCI93,021725,skipped,already processed
+BCI93,022125,skipped,already processed
+BCI93,022625,skipped,already processed
+BCI93,022725,skipped,already processed
+BCI93,030325,skipped,already processed
+BCI93,030425,skipped,already processed
+BCI93,030525,skipped,already processed
+BCI93,030625,skipped,already processed
+BCI93,031025,skipped,already processed
+BCI93,031225,skipped,already processed
+BCI103,013025,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI103\\013025\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI103,013125,error,list index out of range
+BCI103,021025,error,list index out of range
+BCI103,021225,error,list index out of range
+BCI103,021325,error,list index out of range
+BCI103,021725,error,list index out of range
+BCI103,021925,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI103\\021925\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI104,012825,error,list index out of range
+BCI105,013025,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI105\\013025\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI105,020525,error,list index out of range
+BCI107,021025,error,list index out of range
+BCI107,021225,error,list index out of range
+BCI107,021325,error,list index out of range
+BCI107,021725,error,list index out of range
+BCI107,021925,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI107\\021925\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI107,031325,error,list index out of range
+BCI107,031425,error,list index out of range
+BCI107,031725,error,list index out of range
+BCI107,032425,error,list index out of range
+BCI107,032525,error,list index out of range
+BCI107,032625,error,list index out of range
+BCI107,033125,error,list index out of range
+BCI107,040725,error,list index out of range
+BCI107,040825,error,list index out of range
+BCI88,012725,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI88\\012725\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI93,012825,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI93\\012825\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI93,013025,error,list index out of range
+BCI93,013125,error,[WinError 3] The system cannot find the path specified: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI93\\013125\\pophys/'
+BCI93,021025,error,list index out of range
+BCI93,021225,error,list index out of range
+BCI93,021325,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI93\\021325\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI93,021725,error,list index out of range
+BCI93,022125,error,[Errno 2] No such file or directory: '\\\\allen\\aind\\scratch\\BCI\\2p-raw\\BCI93\\022125\\pophys\\suite2p_spont\\plane0\\stat.npy'
+BCI93,022625,error,list index out of range
+BCI93,022725,error,list index out of range
+BCI93,030325,error,list index out of range
+BCI93,030425,error,list index out of range
+BCI93,030525,error,list index out of range
+BCI93,030625,error,list index out of range
+BCI93,031025,error,list index out of range
+BCI93,031225,error,list index out of range

@@ -1137,7 +1137,7 @@ def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
     
     dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
     time = np.arange(0,favg.shape[0]*dt_si,dt_si)
-    time = time - time[pre]
+#    time = time - time[pre]
     stimParams = {
     'powers': powers,
     't_stim': 0,
