@@ -35,14 +35,14 @@ for epoch_i in range(2):
         favg[:, i] = (favg_raw[:, i] - np.nanmean(favg_raw[0:3, i]))/np.nanmean(favg_raw[0:3, i])
     favg[18:26, :, :] = np.nan
     
-    favg = np.apply_along_axis(
+    favg[0:30,:,:] = np.apply_along_axis(
     lambda m: np.interp(
         np.arange(len(m)),
         np.where(~np.isnan(m))[0] if np.where(~np.isnan(m))[0].size > 0 else [0],  # Ensure sample points are non-empty
         m[~np.isnan(m)] if np.where(~np.isnan(m))[0].size > 0 else [0]             # Use a fallback value if empty
     ),
     axis=0,
-    arr=favg
+    arr=favg[0:30,:,:]
     )
 
     amp = np.nanmean(favg[26:35, :, :], axis=0) - np.nanmean(favg[10:19, :, :], axis=0)

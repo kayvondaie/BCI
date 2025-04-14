@@ -122,21 +122,23 @@ def main(folder, index=None):
     # Photostim data (handles photostim_single, photostim_single2, etc.)
     if index is None:
         # Handle all photostim subfolders dynamically
-        photostim_suffix = "suite2p_photostim_single"
         suffix_counter = 1
-        while os.path.isdir(folder + f'/{photostim_suffix}'):
+        while True:
+            photostim_suffix = f"suite2p_photostim_single{suffix_counter if suffix_counter > 1 else ''}"
+            if not os.path.isdir(os.path.join(folder, photostim_suffix)):
+                break
             subfolder = f'{photostim_suffix}/plane0/'
             process_photostim(folder, subfolder, data, suffix_counter)
             suffix_counter += 1
-            photostim_suffix = f"suite2p_photostim_single{suffix_counter}"
     else:
         # Process only the specified photostim subfolder
         photostim_suffix = f"suite2p_photostim_single{index}" if index > 1 else "suite2p_photostim_single"
         subfolder = f'{photostim_suffix}/plane0/'
-        if os.path.isdir(folder + f'/{photostim_suffix}'):
+        if os.path.isdir(os.path.join(folder, photostim_suffix)):
             process_photostim(folder, subfolder, data, index)
         else:
             print(f"Photostim subfolder {photostim_suffix} not found.")
+
     
     # spont data
     if os.path.isdir(folder +r'/suite2p_spont/'):
