@@ -5,6 +5,7 @@ from datetime import datetime
 
 base_dir = '//allen/aind/scratch/BCI/2p-raw'
 mice = ['BCI102', 'BCI109']
+mice = ["BCI88", "BCI93", "BCI102", "BCI103", "BCI104", "BCI105","BCI106","BCI107","BCI109"]
 cutoff_date = datetime.strptime('2025-01-08', '%Y-%m-%d')
 
 rows = []

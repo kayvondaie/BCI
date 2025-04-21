@@ -10,7 +10,7 @@ XX = []
 YY = []
 session_inds = np.where((list_of_dirs['Mouse'] == 'BCI102') & (list_of_dirs['Has data_main.npy']==True))[0]
 #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
-si = 6
+si = 5
 
 pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean
 fit_type      = 'pinv'     #ridge, pinv
@@ -344,3 +344,44 @@ for sii in range(si,si+1):
     plt.title(data['mouse'] + '  ' + data['session'])
     plt.tight_layout()
     plt.show()
+#%%
+plt.figure(figsize = (6,3))
+plt.subplot(121)
+pf.mean_bin_plot(X[0,:]+X[3,:]+X[6,:],Y[0,:],5,1,1,'k')
+plt.xlabel('Correlation with target neuron (early trials)')
+plt.ylabel('Connection')
+
+plt.subplot(122)
+pf.mean_bin_plot(X[24,:]+X[27,:]+X[21,:],Y[0,:],5,1,1,'k')
+plt.xlabel('Correlation with target neuron (late trials)')
+plt.ylabel('Connection')
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize = (6,3))
+plt.subplot(121)
+pf.mean_bin_plot(X[0,:]+X[3,:]+X[6,:],Yo[0,:],5,1,1,'k')
+plt.xlabel('Correlation with target neuron (early trials)')
+plt.ylabel('Connection')
+
+plt.subplot(122)
+pf.mean_bin_plot(X[24,:]+X[27,:]+X[21,:],Yo[0,:],5,1,1,'k')
+plt.xlabel('Correlation with target neuron (late trials)')
+plt.ylabel('Connection')
+
+plt.tight_layout()
+plt.show()
+
+inds = np.arange(0,X.shape[0])[0::3]
+cc = np.zeros((len(inds),))
+cco = np.zeros((len(inds),))
+for i in range(len(inds)):
+    cc[i] = np.corrcoef(Y.flatten(),X[inds[i],:])[0,1]
+    cco[i] = np.corrcoef(Yo.flatten(),X[inds[i],:])[0,1]
+plt.figure(figsize = (3,3))
+
+plt.plot(trial_bins,cc,'m')
+plt.plot(trial_bins,cco,'k')
+plt.ylabel('CC vs. W correlation');
+plt.xlabel('Trial #')
+plt.legend(['After', 'Before'],fontsize=6)
