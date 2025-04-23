@@ -59,7 +59,7 @@ def get_indices_around_steps(tsta, steps, pre=0, post=0):
     
     return np.unique(all_indices)
 
-pairwise_mode = 'dot_prod'#dot_prod, noise_corr
+pairwise_mode = 'noise_corr'#dot_prod, noise_corr
 
 
 dt_si = data['dt_si']
@@ -100,8 +100,17 @@ cc = np.corrcoef(kstep)
 CCstep = np.zeros((cc.shape[0],cc.shape[1],len(trial_bins)))
 CCrew = np.zeros((cc.shape[0],cc.shape[1],len(trial_bins)))
 CCts = np.zeros((cc.shape[0],cc.shape[1],len(trial_bins)))
+
+rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['threshold_crossing_time']])
+st = np.array([x[0] if len(x) > 0 else np.nan for x in data['SI_start_times']])
+rt = rt - st;
+hit = np.isnan(rt)==0;
+hit_bin = np.zeros((len(trial_bins)-1,))
+rt_bin = np.zeros((len(trial_bins),))
 for i in range(len(trial_bins)-1):
     ind = np.arange(trial_bins[i],trial_bins[i+1])
+    hit_bin[i] = np.nanmean(hit[ind]);
+    rt_bin[i] = np.nanmean(rt[ind]);
     if pairwise_mode == 'noise_corr':    
         CCrew[:,:,i] = np.corrcoef(krewards[:,ind])
         CCstep[:,:,i] = np.corrcoef(kstep[:,ind])
@@ -171,9 +180,9 @@ plt.xlabel(r'Predicted  ' + r'$\Delta W$')
 plt.ylabel('$\Delta W$')
 
 plt.subplot(122)
-plt.plot(trial_bins[1:-1],beta[0::3][:-2],'ko-')
-plt.plot(trial_bins[1:-1],beta[1::3][:-2],'bo-')
-plt.plot(trial_bins[1:-1],beta[2::3][:-2],'mo-')
+plt.plot(trial_bins[0:],beta[0::3][:],'ko-')
+plt.plot(trial_bins[0:],beta[1::3][:],'bo-')
+plt.plot(trial_bins[0:],beta[2::3][:],'mo-')
 plt.xlabel('Trials')
 plt.ylabel('Regression coeff.')
 plt.plot(plt.xlim(),(0,0),'k:')
@@ -236,11 +245,22 @@ print(f"Test correlation: {np.mean(corr_test):.3f} ± {np.std(corr_test):.3f}")
 print(f"Test p-value: {np.mean(p_test):.3e}")
 
 # Plotting test set predictions vs actual using mean_bin_plot
-plt.figure(figsize=(5,4))
+plt.figure(figsize=(7,3.5))
+plt.subplot(121)
 pf.mean_bin_plot(Y_test_pred_all, Y_test_all, 5, 1, 1, 'k')
 plt.xlabel('Predicted Y (test)')
 plt.ylabel('Actual Y (test)')
 plt.title('Cross-validated predictions vs actual')
+
+plt.subplot(122)
+a = beta[0::3][:-2];b = beta[1::3][:-2];c = beta[2::3][:-2];
+a = beta[0::3][:];b = beta[1::3][:];c = beta[2::3][:];
+coefs = [a,b,c]
+plt.plot(trial_bins[:-1],(a)[:-1]*1000,'ko-');
+plt.plot(trial_bins[:-1],rt_bin[:-1]);
+plt.xlabel('Trial #');
+plt.ylabel('Coefficient (AU) / Rew Time (s)')
+
 plt.tight_layout()
 plt.show()
 #%%

@@ -79,107 +79,60 @@ sessions_to_run = sessions_df[~sessions_df["Has suite2p"]]
 print(f"Found {len(sessions_to_run)} sessions to process.")
 print(sessions_to_run[["Mouse", "Session", "FOV", "Has previous suite2p in FOV", "OldFolderPath"]])
 #%%
-# for _, row in sessions_to_run.iterrows():
-for i, (_, row) in enumerate(sessions_to_run.reset_index(drop=True).iloc[28:].iterrows(), start=28):
-    print(f"\n🔁 Processing row {i}: {row['Mouse']} {row['Session']}")
-    # your processing logic here
-    folder = row["SessionPath"]
-    old_folder = row["OldFolderPath"]
-    print(f"\n▶ Setting up session: {folder}")
+import numpy as np
+import json
+from collections import Counter
+from pathlib import Path
 
-    # Load suite2p ops and folder_props
-    ops = s2p_default_ops()
-    ops['data_path'] = [str(folder)]
-    folder = ops['data_path'][0]
-    folder_props = folder_props_fun.folder_props_fun(folder)
+for _, row in sessions_df.iterrows():
+    folder = Path(row["SessionPath"])
+    fov = row["FOV"]
 
-    # Extract and display TIFF base counts
-    tif_bases = [fname.rsplit('_', 1)[0] for fname in folder_props['siFiles']]
-    base_counts = Counter(tif_bases)
-    bases = folder_props['bases']
+    if not (folder / "manual_inds.npy").exists():
+        continue  # Skip if not manually tagged
 
-    print("\nBase TIFF groupings:")
-    for index, base in enumerate(bases):
-        count = base_counts.get(base, 0)
-        print(f"{index}: {base} ({count} TIFFs)")
+    if (folder / "manual_ind_basenames.npy").exists():
+        print(f"✓ Already converted: {folder.name}")
+        continue
 
-        # Manual input of indices
-        # --- Guess ind order ---
-    bci_index = max(
-        [(i, base_counts.get(base, 0)) for i, base in enumerate(bases) if 'neuron' in base.lower()],
-        key=lambda x: x[1],
-        default=(None, 0)
-    )[0]
-    
-    photostim_indices = sorted(
-        [i for i, base in enumerate(bases) if 'photostim' in base.lower() and base_counts.get(base, 0) > 1000]
-    )
-    
-    spont_indices = sorted(
-        [i for i, base in enumerate(bases) if 'spont' in base.lower()]
-    )
-    
-    # Assume ordering: BCI, photostim_pre, spont_pre, photostim_post, spont_post
-    guessed_ind = [
-        bci_index,
-        photostim_indices[0] if len(photostim_indices) > 0 else None,
-        spont_indices[0] if len(spont_indices) > 0 else None,
-        photostim_indices[1] if len(photostim_indices) > 1 else None,
-        spont_indices[1] if len(spont_indices) > 1 else None,
-    ]
-    
-    print(f"\n🤖 Guessed indices based on heuristics: {guessed_ind}")
-    ind_input = input("Press Enter to accept or enter your own (e.g., [0,1,2,3,4]): ")
-    
-    if ind_input.strip():
-        ind = [int(x) for x in ind_input.strip("[]() ").split(',')]
-    else:
-        ind = guessed_ind
+    try:
+        folder_props = folder_props_fun.folder_props_fun(str(folder))
+        bases = folder_props['bases']
+        tif_bases = [fname.rsplit('_', 1)[0] for fname in folder_props['siFiles']]
+        base_counts = Counter(tif_bases)
 
-    ind = [int(x) for x in ind_input.strip("[]() ").split(',')]
-    
-        # --- Determine savefolders based on whether there's a BCI block ---
-    if 'neuron' in bases[ind[0]].lower():
-        savefolders = {
-            0: 'BCI',
-            1: 'photostim_single',
-            2: 'photostim_single2',
-            3: 'spont_pre',
-            4: 'spont_post'
-        }
-    else:
-        savefolders = {
-            0: 'spont_pre',
-            1: 'photostim_single',
-            2: 'photostim_single2',
-            3: 'spont_post'
-        }
-    
-    print("\nFinal savefolders mapping:")
-    for k, v in savefolders.items():
-        print(f"{k}: {v}")
+        ind = np.load(folder / "manual_inds.npy")
+        ind_basenames = [bases[i] for i in ind]
 
+        # Determine savefolders
+        if 'neuron' in ind_basenames[0].lower():
+            savefolders = {
+                0: 'BCI',
+                1: 'photostim_single',
+                2: 'photostim_single2',
+                3: 'spont_pre',
+                4: 'spont_post'
+            }
+        else:
+            savefolders = {
+                0: 'spont_pre',
+                1: 'photostim_single',
+                2: 'photostim_single2',
+                3: 'spont_post'
+            }
 
-    # Save ind to .npy
-    ind_path = Path(folder) / "manual_inds.npy"
-    np.save(ind_path, np.array(ind))
-    print(f"✓ Saved ind to: {ind_path}")
+        # Save new files
+        np.save(folder / "manual_ind_basenames.npy", np.array(ind_basenames))
+        with open(folder / "savefolders.json", "w") as f:
+            json.dump(savefolders, f, indent=2)
+        with open(folder / "FOV.txt", "w") as f:
+            f.write(fov)
 
-    # Save old_folder to .txt
-    if old_folder:
-        old_folder_path = Path(folder) / "old_folder.txt"
-        with open(old_folder_path, "w") as f:
-            f.write(old_folder)
-        print(f"✓ Saved old_folder to: {old_folder_path}")
-    else:
-        print("⚠️ No old folder to save.")
-        
-    import json
-    savefolders_path = Path(folder) / "savefolders.json"
-    with open(savefolders_path, "w") as f:
-        json.dump(savefolders, f, indent=2)
-    
-    print(f"✓ Saved savefolders to: {savefolders_path}")
+        print(f"✓ Converted {folder.name}: {ind_basenames}")
+
+    except Exception as e:
+        print(f"⚠️ Failed to convert {folder.name}: {e}")
+
 #%%
 import numpy as np
 import os
