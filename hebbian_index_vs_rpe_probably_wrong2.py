@@ -10,25 +10,30 @@ HI = []
 RT = []
 HIT = []
 HIa= []
+HIb = []
+HIc = []
 DOT = []
 TRL = []
+THR = []
+RPE = []
+RPE_FIT = []
 session_inds = np.where((list_of_dirs['Mouse'] == 'BCI102') & (list_of_dirs['Has data_main.npy']==True))[0]
 #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
-si = 0
+si = 3
 
 pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean
 fit_type      = 'pinv'     #ridge, pinv
 alpha         =  .1        #only used for ridge
 num_bins      =  10         # number of bins to calculate correlations
-for sii in range(si,len(session_inds)):
+for sii in range(0,len(session_inds)):
     print(sii)
     mouse = list_of_dirs['Mouse'][session_inds[sii]]
     session = list_of_dirs['Session'][session_inds[sii]]
     folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
     photostim_keys = ['stimDist', 'favg_raw']
-    bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si','step_time','reward_time']
+    bci_keys = ['df_closedloop','F','mouse','session','conditioned_neuron','dt_si','step_time','reward_time','BCI_thresholds']
     data = ddct.load_hdf5(folder,bci_keys,photostim_keys )
-    
+    BCI_thresholds = data['BCI_thresholds']
     AMP = []
     siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
     umPerPix = 1000/float(siHeader['metadata']['hRoiManager']['scanZoomFactor'])/int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
@@ -155,7 +160,7 @@ for sii in range(si,len(session_inds)):
             krewards[:, ti] = np.nanmean(F[indices_rewards, :, ti], axis=0)
 
     # Go cue regressor
-    ts = np.where((tsta > 0) & (tsta < 2))[0]
+    ts = np.where((tsta > 0) & (tsta < 10))[0]
     k = np.nanmean(F[ts[0]:ts[-1], :, :], axis=0)
 
 
@@ -181,11 +186,32 @@ for sii in range(si,len(session_inds)):
     hit_bin = np.zeros((len(trial_bins),))
     rt_bin = np.zeros((len(trial_bins),))
     avg_dot_bin = np.zeros((len(trial_bins),))
+    thr_bin = np.zeros((len(trial_bins),))
+    rpe_bin = np.zeros((len(trial_bins),))
+    
+    def compute_rpe(rt, baseline=3.0, window=10, fill_value=np.nan):
+        rpe = np.full_like(rt, np.nan, dtype=np.float64)
+        rt_clean = np.where(np.isnan(rt), fill_value, rt)
+
+        for i in range(len(rt)):
+            if i == 0:
+                avg = baseline
+            else:
+                start = max(0, i - window)
+                avg = np.nanmean(rt_clean[start:i]) if i > start else baseline
+            rpe[i] = avg - rt_clean[i]
+        return rpe
+    rpe = compute_rpe(rt, baseline=1.0, window=10, fill_value=50)
+    
+    
+    
     for i in range(len(trial_bins)-1):
         ind = np.arange(trial_bins[i],trial_bins[i+1])
         hit_bin[i] = np.nanmean(hit[ind]);
         rt_bin[i] = np.nanmean(rt[ind]);
         avg_dot_bin[i] = np.nanmean(centered_dot(k[:, ind]))
+        thr_bin[i] = np.nanmean(BCI_thresholds[1,ind])
+        rpe_bin[i] = np.nanmean(rpe[ind])
         if pairwise_mode == 'noise_corr':    
             CCrew[:,:,i] = np.corrcoef(krewards[:,ind])
             CCstep[:,:,i] = np.corrcoef(kstep[:,ind])
@@ -203,7 +229,7 @@ for sii in range(si,len(session_inds)):
 
     # Interleave step and reward correlations
     CC[:, :, 0::3] = CCstep
-    CC[:, :, 1::3] = CCrew
+    CC[:, :, 1::3] = CCrew*0
     CC[:, :, 2::3] = CCts
 
 
@@ -359,16 +385,33 @@ for sii in range(si,len(session_inds)):
     RT.append(rt_bin.T)
     HI.append(np.abs(a+b+c).T)
     HIa.append(a)
+    HIb.append(b)
+    HIc.append(c)
     HIT.append(hit_bin)
     DOT.append(avg_dot_bin.T)
     TRL.append(trial_bins.T)
+    THR.append(thr_bin.T)
+    RPE.append(rpe_bin.T)
+    
+    plt.figure()
+    plt.subplot(121)
+    beta2 = np.linalg.pinv(beta.reshape(3, num_bins).T) @ rpe_bin.T
+    rpe_fit = beta.reshape(3, num_bins).T @ beta2
+    RPE_FIT.append(rpe_fit)
+    pf.mean_bin_plot(rpe_fit,rpe_bin.T,5,1,1,'k')
+    plt.subplot(122)
+    plt.bar((1,2,3),beta2)
+    
 #%%
-HII = HI.copy()
+HII = HIa.copy()
 for i in range(len(HI)):    
     HII[i] = HII[i]/np.linalg.norm(HII[i])
-x = np.concatenate(RT,axis=0);y = np.concatenate(HII,axis=0)
-pf.mean_bin_plot(x,y,5,1,1,'k')
+x = np.concatenate(RPE,axis=0);y = np.concatenate(HII,axis=0)
+z = np.concatenate(HIc.copy(),axis=0)
+rt = np.concatenate(RT,axis=0)
 ind = np.where((np.isnan(x)==0) & (np.isnan(y)==0))[0]
+ind = np.where(rt>-4)[0]
+pf.mean_bin_plot(x[ind],y[ind],3,1,1,'k')
 r, p = pearsonr(x[ind], y[ind])
 print(f"p-value: {np.exp(np.mean(np.log(p))):.3e}")
 plt.xlabel('Time to rew (s)')
@@ -427,8 +470,9 @@ for j in range(3):
         )
         plt.title(f'Trials {trial_bins[idx[i]]}…{trial_bins[idx[i]+1]}', fontsize=9)
     cax = fig.add_axes([1, 0.25, 0.02, 0.5])  
-    cb  = fig.colorbar(im, cax=cax)
-    cb.ax.tick_params(labelsize=8)
+    #cb  = fig.colorbar(im, cax=cax)
+    #cb.ax.tick_params(labelsize=8)
     cax.yaxis.set_ticks_position('right')    
     plt.tight_layout()    
+    plt.show()
 
