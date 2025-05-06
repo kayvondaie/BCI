@@ -25,18 +25,18 @@ TRL = []
 THR = []
 RPE = []
 RPE_FIT = []
-session_inds = np.where((list_of_dirs['Mouse'] == 'BCI109') & (list_of_dirs['Has data_main.npy']==True))[0]
+session_inds = np.where((list_of_dirs['Mouse'] == 'BCI102') & (list_of_dirs['Has data_main.npy']==True))[0]
 #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
-si = 3
+si = 5
 
 pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean
 fit_type      = 'ridge'     #ridge, pinv
 alpha         =  100        #only used for ridge
-num_bins      =  30        # number of bins to calculate correlations
+num_bins      =  10        # number of bins to calculate correlations
 tau_elig      =  2
 shuffle       =  0
-for sii in range(len(session_inds)):
-# for sii in range(si,si+1):
+#for sii in range(len(session_inds)):
+for sii in range(si,si+1):
     print(sii)
     mouse = list_of_dirs['Mouse'][session_inds[sii]]
     session = list_of_dirs['Session'][session_inds[sii]]
@@ -216,10 +216,10 @@ for sii in range(len(session_inds)):
             rpe[i] = rt_clean[i] - avg
         return rpe
     rt_rpe = -compute_rpe(rt, baseline=2.0, tau=tau_elig, fill_value=10)
-    hit_rpe = compute_rpe(hit, baseline=1, tau=tau_elig, fill_value=0)
-    # miss_rpe = compute_rpe(hit==0, baseline=0, tau=tau_elig, fill_value=1)
-    trials = np.arange(0,len(hit))
-    miss_rpe = np.convolve((hit==0),np.exp(-trials/tau_elig))[0:len(trials)]
+    hit_rpe = compute_rpe(hit, baseline=0, tau=tau_elig, fill_value=0)
+    miss_rpe = compute_rpe(hit==0, baseline=0, tau=tau_elig, fill_value=1)
+    #trials = np.arange(0,len(hit))
+    #miss_rpe = np.convolve((hit==0),np.exp(-trials/tau_elig))[0:len(trials)]
     
     
     for i in range(len(trial_bins)-1):
@@ -357,20 +357,20 @@ for sii in range(len(session_inds)):
         beta = np.linalg.pinv(X_T) @ Y_T  # (13, 1)
     elif fit_type == 'ridge':
         from sklearn.linear_model import Ridge
-        ridge = Ridge(alpha, fit_intercept=False)
+        # ridge = Ridge(alpha, fit_intercept=False)
+        # ridge.fit(X_T, Y_T)
+        # beta = ridge.coef_
+        
+        from sklearn.linear_model import RidgeCV
+    
+        # Try a range of alphas (log scale is typical)
+        alphas = np.logspace(-2, 6, 20)
+        
+        ridge = RidgeCV(alphas=alphas, fit_intercept=False, store_cv_values=True)
         ridge.fit(X_T, Y_T)
         beta = ridge.coef_
         
-    from sklearn.linear_model import RidgeCV
-
-    # Try a range of alphas (log scale is typical)
-    alphas = np.logspace(-2, 6, 20)
-    
-    ridge = RidgeCV(alphas=alphas, fit_intercept=False, store_cv_values=True)
-    ridge.fit(X_T, Y_T)
-    beta = ridge.coef_
-    
-    print(f"Best alpha: {ridge.alpha_}")
+        print(f"Best alpha: {ridge.alpha_}")
 
 
 
@@ -399,6 +399,15 @@ for sii in range(len(session_inds)):
         
         # Fit regression on training set
         beta_cv = np.linalg.pinv(X_train) @ Y_train
+
+        # Fit based on fit_type
+        if fit_type == 'pinv':
+            beta_cv = np.linalg.pinv(X_train) @ Y_train
+    
+        elif fit_type == 'ridge':
+            ridge = RidgeCV(alphas=alphas, fit_intercept=False, store_cv_values=True)
+            ridge.fit(X_train, Y_train)
+            beta_cv = ridge.coef_
         
         # Predict on train/test
         Y_train_pred = X_train @ beta_cv
@@ -432,7 +441,7 @@ for sii in range(len(session_inds)):
     pf.mean_bin_plot(Y_test_pred_all, Y_test_all, 5, 1, 1, 'k')
     plt.xlabel(r'$Behav._t r_{j,t} r_{j,t}$')
     plt.ylabel('$\Delta W$')
-    plt.title(data['mouse'] + ' ' + data['session'])
+    plt.title(data['mouse'] + ' ' + data['session'] + r'  hit = ' + str(round(np.nanmean(hit)*100)) + '%')
 
     n_features = behavior_features.shape[1]
     beta_reshaped = beta.reshape(3, n_features)  # 3 = step, reward, go

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-
+from scipy.stats import pearsonr
 
 def mean_bin_plot(xx, yy, col, pltt, A, color):
     xx = np.reshape(xx, (-1, 1))
@@ -48,9 +48,9 @@ def mean_bin_plot(xx, yy, col, pltt, A, color):
         plt.errorbar(X, Y, stdEr, marker='o', markersize=5,
                      color=color, markerfacecolor=color)
 
-
-    C = c
-    P = p
+    r, p = pearsonr(X, Y)
+    #print('p-value = ' + str(p))
+    
 
     #plt.title('P = ' + str(P))
     return X, Y, p
