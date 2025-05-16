@@ -26,7 +26,7 @@ rgba_img[..., 3] = 1.0  # Fully opaque initially
 overlay = np.zeros_like(rgba_img)
 
 # Loop through each ROI and fill the overlay
-for roi in stat[0:40]:
+for roi in stat[0:]:
     ypix = roi['ypix']  # Y-coordinates for the current ROI
     xpix = roi['xpix']  # X-coordinates for the current ROI
     overlay[ypix, xpix, 0] = 1  # Set the green channel to 1 for ROI pixels
@@ -36,7 +36,7 @@ for roi in stat[0:40]:
 plt.imshow(img/8, cmap='gray', vmin=0, vmax=10)
 
 # Overlay the RGBA image
-plt.imshow(overlay, alpha=1)
+plt.imshow(overlay, alpha=.5)
 
 # Show the plot with the overlaid mask
 plt.axis('off')  # Hide the axes

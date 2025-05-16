@@ -16,16 +16,19 @@ DOT = []
 TRL = []
 THR = []
 RPE = []
+CN = []
 RPE_FIT = []
+CC_RPE, CC_RT, HIT_RATE = [],[],[]
 session_inds = np.where((list_of_dirs['Mouse'] == 'BCI102') & (list_of_dirs['Has data_main.npy']==True))[0]
 #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
-si = 3
+si = 5
 
-pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean
+pairwise_mode = 'noise_corr'  #dot_prod, noise_corr,dot_prod_no_mean
 fit_type      = 'pinv'     #ridge, pinv
 alpha         =  .1        #only used for ridge
-num_bins      =  10         # number of bins to calculate correlations
-for sii in range(0,len(session_inds)):
+num_bins      =  20         # number of bins to calculate correlations
+#for sii in range(0,len(session_inds)):
+for sii in range(si,si+1):
     print(sii)
     mouse = list_of_dirs['Mouse'][session_inds[sii]]
     session = list_of_dirs['Session'][session_inds[sii]]
@@ -160,7 +163,7 @@ for sii in range(0,len(session_inds)):
             krewards[:, ti] = np.nanmean(F[indices_rewards, :, ti], axis=0)
 
     # Go cue regressor
-    ts = np.where((tsta > 0) & (tsta < 10))[0]
+    ts = np.where((tsta > 0) & (tsta < 2))[0]
     k = np.nanmean(F[ts[0]:ts[-1], :, :], axis=0)
 
 
@@ -183,6 +186,7 @@ for sii in range(0,len(session_inds)):
 
     rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
     hit = np.isnan(rt)==0;
+    rt[np.isnan(rt)] = 20;
     hit_bin = np.zeros((len(trial_bins),))
     rt_bin = np.zeros((len(trial_bins),))
     avg_dot_bin = np.zeros((len(trial_bins),))
@@ -201,7 +205,7 @@ for sii in range(0,len(session_inds)):
                 avg = np.nanmean(rt_clean[start:i]) if i > start else baseline
             rpe[i] = avg - rt_clean[i]
         return rpe
-    rpe = compute_rpe(rt, baseline=1.0, window=10, fill_value=50)
+    rpe = compute_rpe(rt, baseline=10, window=20, fill_value=50)
     
     
     
@@ -229,7 +233,7 @@ for sii in range(0,len(session_inds)):
 
     # Interleave step and reward correlations
     CC[:, :, 0::3] = CCstep
-    CC[:, :, 1::3] = CCrew*0
+    CC[:, :, 1::3] = CCrew
     CC[:, :, 2::3] = CCts
 
 
@@ -285,27 +289,7 @@ for sii in range(0,len(session_inds)):
 
 
     Y_pred = np.dot(beta.T,X_T.T)
-    plt.figure(figsize=(6,3))
-    plt.subplot(121)
-    pf.mean_bin_plot(Y_pred,Y_T,5,1,1,'k')
-    plt.xlabel(r'Predicted  ' + r'$\Delta W$')
-    plt.ylabel('$\Delta W$')
-
-    plt.subplot(122)
-    plt.plot(trial_bins[0:],beta[0::3][:],'ko-')
-    plt.plot(trial_bins[0:],beta[1::3][:],'bo-')
-    plt.plot(trial_bins[0:],beta[2::3][:],'mo-')
-    plt.xlabel('Trials')
-    plt.ylabel('Regression coeff.')
-    plt.plot(plt.xlim(),(0,0),'k:')
-    plt.legend(['Steps', 'Rew.', 'Go'],fontsize=6)
-    plt.tight_layout()
-    corr_coef, p_value = pearsonr(Y_pred, Y_T)
-    plt.show()
-
-    # a = beta[0::3][:-2];b = beta[1::3][:-2];c = beta[2::3][:-2];plt.plot(trial_bins[1:-1],a+b+c,'ko-')
-    # plt.xlabel('Trials')
-    # plt.ylabel('Avg. Regression coeffs.')
+   
 
     from sklearn.model_selection import KFold
     from scipy.stats import pearsonr
@@ -357,66 +341,135 @@ for sii in range(0,len(session_inds)):
     print(f"Test p-value: {np.mean(p_test):.3e}")
     print(f"Test p-value: {np.exp(np.mean(np.log(p_test))):.3e}")
     # Plotting test set predictions vs actual using mean_bin_plot
-    plt.figure(figsize=(4,2))
-    plt.subplot(121)
+    plt.figure(figsize=(6,6))
+    plt.subplot(221)
     pf.mean_bin_plot(Y_test_pred_all, Y_test_all, 5, 1, 1, 'k')
     plt.xlabel(r'$HI r_i r_j$')
     plt.ylabel('$\Delta W$')
     plt.title('Cross-validated predictions vs actual')
-
-    plt.subplot(122)
-    a = beta[0::3][:-2];b = beta[1::3][:-2];c = beta[2::3][:-2];
-    a = beta[0::3][:];b = beta[1::3][:];c = beta[2::3][:];
-    coefs = [a,b,c]
-    plt.plot(trial_bins[:-1],(a)[:-1]*8000,'ko-');
-    plt.plot(trial_bins[:-1],rt_bin[:-1]);
-    plt.xlabel('Trial #');
-    plt.ylabel('HI (AU) / Rew Time (s)')
-    plt.title(data['mouse'] + '  ' + data['session'])
-    plt.tight_layout()
-    plt.show()
-    
-    
-    pf.mean_bin_plot(rt_bin,np.abs(a+b+c),3,1,1,'k')
-    plt.xlabel('Time to rew (s)')
-    plt.ylabel('|Hebb. idx|')
-    plt.title(data['mouse'] + '  ' + data['session'])
+ 
     
     RT.append(rt_bin.T)
-    HI.append(np.abs(a+b+c).T)
+    
     HIa.append(a)
-    HIb.append(b)
+    
+    from sklearn.linear_model import LinearRegression
+
+    b = []
+    c = []
+    intercept = []
+    inds = np.arange(0,X.shape[0])[1::3]
+    for i in range(len(inds)):
+        x = X[inds[i], :].reshape(-1, 1)
+        y = (Y - Yo).flatten()
+        model = LinearRegression().fit(x, y)
+        b.append(model.coef_[0])
+        c.append(np.corrcoef((Y-Yo).flatten(),X[inds[i],:])[0,1])
+        intercept.append(model.intercept_)
+        
+    from sklearn.linear_model import LinearRegression
+    from scipy.stats import zscore
+    import numpy as np
+    
+    # b = []
+    # c = []
+    # intercept = []
+    # inds = np.arange(0, X.shape[0])[2::3]
+    
+    # for i in range(len(inds)):
+    #     x = X[inds[i], :].reshape(-1)  # Flatten to 1D
+    #     y = (Y - Yo).flatten()
+    
+    #     # Drop NaNs from x and y
+    #     valid = ~np.isnan(x) & ~np.isnan(y)
+    #     x_valid = x[valid]
+    #     y_valid = y[valid]
+    
+    #     # Skip if not enough valid points
+    #     if len(x_valid) < 2:
+    #         b.append(np.nan)
+    #         c.append(np.nan)
+    #         intercept.append(np.nan)
+    #         continue
+    
+    #     # Z-score
+    #     x_z = zscore(x_valid)
+    #     y_z = zscore(y_valid)
+    
+    #     # Skip if z-scoring results in NaNs (e.g., constant input)
+    #     if np.any(np.isnan(x_z)) or np.any(np.isnan(y_z)):
+    #         b.append(np.nan)
+    #         c.append(np.nan)
+    #         intercept.append(np.nan)
+    #         continue
+    
+    #     # Fit regression
+    #     model = LinearRegression().fit(x_z.reshape(-1, 1), y_z)
+    #     b.append(model.coef_[0])
+    #     c.append(np.corrcoef(y_z, x_z)[0, 1])
+    #     intercept.append(model.intercept_)
+
+
+    
+    HIb.append(np.asarray(b))
     HIc.append(c)
     HIT.append(hit_bin)
     DOT.append(avg_dot_bin.T)
     TRL.append(trial_bins.T)
     THR.append(thr_bin.T)
-    RPE.append(rpe_bin.T)
+    RPE.append(rpe_bin.T)    
     
-    plt.figure()
-    plt.subplot(121)
-    beta2 = np.linalg.pinv(beta.reshape(3, num_bins).T) @ rpe_bin.T
-    rpe_fit = beta.reshape(3, num_bins).T @ beta2
-    RPE_FIT.append(rpe_fit)
-    pf.mean_bin_plot(rpe_fit,rpe_bin.T,5,1,1,'k')
-    plt.subplot(122)
-    plt.bar((1,2,3),beta2)
+    plt.subplot(222)
+    plt.plot(trial_bins, np.asarray(b) * 1000, 'k', label='HI')
+    plt.plot(trial_bins, rpe_bin, 'b', label='RPE')
+    plt.plot(trial_bins, rt_bin, 'r', label='rew time')
+    plt.legend(fontsize=4, loc='upper left')  # adjust fontsize and position
+    plt.title(mouse + ' ' + session)
+    plt.xlabel('Trial #')
+
+    
+    plt.subplot(223)
+    cc_rpe = (np.corrcoef(rpe_bin[:-1],np.asarray(b)[:-1])[1,0])
+    cc_rt = (np.corrcoef(rt_bin[:-1],np.asarray(b)[:-1])[1,0])
+    plt.bar(['RPE', 'RT'], [cc_rpe, cc_rt],color = 'k')
+    plt.ylabel('Correlation with b')
+    plt.title('Correlation of b with RPE and RT')
+    
+    CC_RPE.append(cc_rpe)
+    CC_RT.append(cc_rt)
+    HIT_RATE.append(np.nanmean(hit))
+    cn = data['conditioned_neuron'][0][0]
+    try:
+        mouse = list_of_dirs['Mouse'][session_inds[sii-1]]
+        session = list_of_dirs['Session'][session_inds[sii-1]]
+        folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'    
+        old = ddct.load_hdf5(folder,bci_keys = ['F'],photostim_keys = [])
+        Fo = old['F']
+        plt.subplot(224);
+        plt.plot(np.nanmean(F[:,cn,:],axis=1),'m')
+        if Fo.shape[1] == F.shape[1]:
+            plt.plot(np.nanmean(Fo[:,cn,:],axis=1),'k')
+    except:
+        continue
+    CN.append(cn)    
+    plt.tight_layout()
+    
+
     
 #%%
-HII = HIa.copy()
-for i in range(len(HI)):    
-    HII[i] = HII[i]/np.linalg.norm(HII[i])
-x = np.concatenate(RPE,axis=0);y = np.concatenate(HII,axis=0)
-z = np.concatenate(HIc.copy(),axis=0)
-rt = np.concatenate(RT,axis=0)
+HII = HIb.copy()
+for i in range(len(HII)):
+    HII[i] = HII[i] - np.nanmean(HII[i])
+x = np.concatenate(RT,axis=0);
+y = np.concatenate(HII,axis=0)
 ind = np.where((np.isnan(x)==0) & (np.isnan(y)==0))[0]
-ind = np.where(rt>-4)[0]
-pf.mean_bin_plot(x[ind],y[ind],3,1,1,'k')
-r, p = pearsonr(x[ind], y[ind])
+pf.mean_bin_plot(x,y,8,1,1,'k')
+r, p = pearsonr(y[ind],x[ind])
 print(f"p-value: {np.exp(np.mean(np.log(p))):.3e}")
 plt.xlabel('Time to rew (s)')
-plt.ylabel('|Hebb. idx|')
+plt.ylabel('Hebb. idx')
 plt.title(data['mouse'])
+#plt.plot(RT,HII,'k.',markersize = 4,alpha = .2)
 #%%
 inds = np.arange(0,X.shape[0])[0::3]
 
