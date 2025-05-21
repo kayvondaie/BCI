@@ -62,15 +62,43 @@ for i in range(axon_rew.shape[0]):
     axon_rew[i,:] = axon_rew[i,:] / np.max(axon_rew[i,:])
 # Plot with time on x-axis
 ind = np.where(depth > .1)[0]
+
+early = 6;
+late = 23
+plt.figure(figsize = (6,3))
+
+plt.subplot(221);
+plt.plot(time,axon_rew[early,:],'c')
+plt.plot((0,0),plt.ylim(),'k:')
+plt.title(SESSION[early])
+
+plt.subplot(223);
+plt.plot(time,axon_rew[late,:],'m')
+plt.title(SESSION[late])
+plt.plot((0,0),plt.ylim(),'k:')
+plt.xlabel('Time from reward (s)')
+
+plt.subplot(122)
 plt.imshow(axon_rew[ind,:], aspect='auto', vmin=0, vmax=1,
            extent=[time[0], time[-1], axon_rew.shape[0], 0])
 
-# Add vertical line at time = 0
 plt.axvline(0, linestyle='--', color='k', linewidth=1)
 
-# Label axes
-plt.xlabel('Time (s)')
-plt.ylabel('Session index')
+# Add arrows on the correct rows (adjusted for ind[] and y-flip)
+arrow_x = 1.5  # x-position of arrow
+arrow_size = 50
 
+# Map session index to row index in imshow plot
+early_row = np.where(ind == early)[0][0]
+late_row = np.where(ind == late)[0][0]
+
+plt.scatter([arrow_x], [early_row], color='c', s=arrow_size, marker='^', edgecolors='k', linewidths=0.5)
+plt.scatter([arrow_x], [late_row], color='m', s=arrow_size, marker='^', edgecolors='k', linewidths=0.5)
+
+plt.xlabel('Time from reward (s)')
+plt.ylabel('Session index')
 plt.title(mouse)
-plt.show()
+
+plt.tight_layout()
+
+peak_times = [time[np.argmax(trace)] for trace in axon_rew]
