@@ -28,9 +28,15 @@ def main(folder, index=None):
     """
     
     data = dict()    
-    slash_indices = [match.start() for match in re.finditer('/', folder)]
-    data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
-    data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
+    slash_indices = [match.start() for match in re.finditer('/', folder)]        
+    if 'pophys' in folder:
+        # Newer folder structure with 'pophys' at the end
+        data['session'] = folder[slash_indices[-3]+1 : slash_indices[-2]]
+        data['mouse'] = folder[slash_indices[-4]+1 : slash_indices[-3]]
+    else:
+        # Older structure, no 'pophys'
+        data['session'] = folder[slash_indices[-2]+1 : slash_indices[-1]]
+        data['mouse'] = folder[slash_indices[-3]+1 : slash_indices[-2]]
     bci_folder = os.path.join(folder, 'suite2p_BCI', 'plane0')
     
     if os.path.isdir(bci_folder):
@@ -44,9 +50,16 @@ def main(folder, index=None):
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
         
         data['dat_file'] = bci_folder
-        slash_indices = [match.start() for match in re.finditer('/', folder)]
-        data['session'] = folder[slash_indices[-3]+1:slash_indices[-2]]
-        data['mouse'] = folder[slash_indices[-4]+1:slash_indices[-3]]
+        slash_indices = [match.start() for match in re.finditer('/', folder)]        
+        if 'pophys' in folder:
+            # Newer folder structure with 'pophys' at the end
+            data['session'] = folder[slash_indices[-3]+1 : slash_indices[-2]]
+            data['mouse'] = folder[slash_indices[-4]+1 : slash_indices[-3]]
+        else:
+            # Older structure, no 'pophys'
+            data['session'] = folder[slash_indices[-2]+1 : slash_indices[-1]]
+            data['mouse'] = folder[slash_indices[-3]+1 : slash_indices[-2]]
+
         
         dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
         if dt_si < 0.05:

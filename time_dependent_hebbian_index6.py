@@ -8,20 +8,10 @@ folder = str(list_of_dirs[si])
 #%%
 from bci_time_series import *
 
-HI  = []
-RT  = []
-HIT = []
-HIa = []
-HIb = []
-HIc = []
-DOT = []
-TRL = []
-THR = []
-RPE = []
-CN  = []
-RPE_FIT = []
-AVG_RPE = []
-CC_RPE, CC_RT, HIT_RATE, CN_SNR, D_HIT_RATE, RPE_VAR, CORR_RPE, CORR_RT, RT_WINDOW, HIT_WINDOW, THR_WINDOW = [],[],[],[],[],[],[],[],[],[],[]
+RT, HIT, HIb, HIc, DOT, TRL, THR, RPE, CN = [], [], [], [], [], [], [], [], []
+CC_RPE, CC_RT, HIT_RATE, D_HIT_RATE, CORR_RPE, CORR_RT = [], [], [], [], [], []
+RT_WINDOW, HIT_WINDOW, THR_WINDOW, PVAL = [], [], [], []
+
 mice = ["BCI102","BCI103","BCI104","BCI105","BCI106","BCI107","BCI109"]
 for mi in range(len(mice)):
     session_inds = np.where((list_of_dirs['Mouse'] == mice[mi]) & (list_of_dirs['Has data_main.npy']==True))[0]
@@ -354,6 +344,7 @@ for mi in range(len(mice)):
         print(f"Test correlation: {np.mean(corr_test):.3f} ± {np.std(corr_test):.3f}")
         print(f"Test p-value: {np.mean(p_test):.3e}")
         print(f"Test p-value: {np.exp(np.mean(np.log(p_test))):.3e}")
+        PVAL.append(np.exp(np.mean(np.log(p_test))))
         # Plotting test set predictions vs actual using mean_bin_plot
         plt.figure(figsize=(8,6))
         plt.subplot(231)
@@ -466,6 +457,10 @@ for mi in range(len(mice)):
         RT_WINDOW.append(rt_window) 
         HIT_WINDOW.append(hit_window)
         THR_WINDOW.append(thr_window)
+        
+        name = mouse +'_'+ session + '_hebb_index_time.png'
+        folder = 'C:/Users/kayvon.daie/OneDrive - Allen Institute/Documents/Data/Figures 2025/Hebbian index fits/' + name +'.png'
+        fig.savefig(folder, format='png')
     
         
 #%%     

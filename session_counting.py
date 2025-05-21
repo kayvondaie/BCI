@@ -59,7 +59,7 @@ def counter():
 
     return df
 
-def counter2(mice, cutoff_str):
+def counter2(mice, cutoff_str, has_pophys = True):
     base_dir = Path(r'//allen/aind/scratch/BCI/2p-raw')
     cutoff_date = datetime.datetime.strptime(cutoff_str, "%m%d%y").date()
 
@@ -79,7 +79,10 @@ def counter2(mice, cutoff_str):
                     continue
 
                 if session_date > cutoff_date:
-                    pophys_dir = item / "pophys"
+                    if has_pophys:
+                        pophys_dir = item / "pophys"
+                    else:
+                        pophys_dir = item
                     if pophys_dir.is_dir():
                         session_counts[mouse] += 1
 

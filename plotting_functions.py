@@ -245,3 +245,60 @@ def fixed_bin_plot(xx, yy, col=None, pltt=1, A=1, color='b', bins=None):
                      color=color, markerfacecolor=color)
 
     return X, Y, p
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.utils import resample
+
+def plot_bootstrap_fit(x, y, n_boot=1000, label=None, color='k', alpha_fill=0.2):
+    """
+    Plot a bootstrap regression fit with 95% confidence interval and return p-value on slope.
+
+    Parameters:
+        x, y       : arrays of data
+        n_boot     : number of bootstrap samples
+        flip_x     : whether to flip x (use -x)
+        label      : optional label for the fit
+        color      : line color
+        alpha_fill : transparency for CI band
+        ax         : optional matplotlib axis to plot on
+        return_slope : if True, return (slope_median, slope_pval)
+
+    Returns:
+        ax                 : matplotlib axis with the plot
+        (optional) tuple   : (median_slope, p-value for slope ≠ 0)
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+    ind = np.where((~np.isnan(x)) & (~np.isnan(y)))[0]
+    x = x[ind]
+    y = y[ind]
+
+
+
+    x_fit = np.linspace(np.min(x), np.max(x), 100)
+    y_boot = np.zeros((n_boot, len(x_fit)))
+    slope_boot = np.zeros(n_boot)
+
+    for i in range(n_boot):
+        xb, yb = resample(x, y)
+        coef = np.polyfit(xb, yb, 1)
+        slope_boot[i] = coef[0]
+        y_boot[i] = np.polyval(coef, x_fit)
+
+    y_median = np.median(y_boot, axis=0)
+    y_lower = np.percentile(y_boot, 2.5, axis=0)
+    y_upper = np.percentile(y_boot, 97.5, axis=0)
+
+    # p-value for slope ≠ 0
+    slope_median = np.median(slope_boot)
+    pval = 2 * np.minimum(np.mean(slope_boot > 0), np.mean(slope_boot < 0))
+
+  
+
+    #ax.scatter(x, y, s=10, alpha=0.5, color=color)
+    plt.plot(x_fit, y_median, color=color, label=label)
+    plt.fill_between(x_fit, y_lower, y_upper, color=color, alpha=alpha_fill)
+    return slope_median, pval
+    
