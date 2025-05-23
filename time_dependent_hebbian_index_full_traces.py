@@ -586,7 +586,7 @@ ind = np.where((np.isnan(x)==0) & (np.isnan(y)==0))[0]
 # plt.xlabel('D Hit after thr change')
 # plt.ylabel('RPE weight')
 pearsonr(-x[ind],y[ind])
-
+#%%
 
 # Original data preparation
 x = np.asarray(dhit)

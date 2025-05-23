@@ -458,7 +458,6 @@ for mi in range(len(mice)):
             thr_window[i] = np.nanmax(thr_bin[i:i+window])
             
             
-            
         plt.subplot(236)
         #plt.plot(trial_bins[:-window], corr_rpe,'k')
         plt.plot(trial_bins[:-window], corr_rpe,'k');
