@@ -6,7 +6,7 @@ Created on Wed May 21 12:03:24 2025
 """
 import session_counting
 import data_dict_create_module_test as ddc
-sessions = session_counting.counter2(["BCINM_017"],'010112',has_pophys=False)
+sessions = session_counting.counter2(["BCINM_020"],'010112',has_pophys=False)
 #%%
 # for i in range(len(sessions)):
 #     try:
@@ -229,10 +229,51 @@ trial_start_modulation = np.nanmean(fts[39:42,:],axis=0) - np.nanmean(fts[30:35,
 plt.plot(trial_start_modulation,'k.-')
 
 
-
-
-
-
-
-
-
+#%%
+import bci_time_series as bts
+for i in range(len(sessions)):
+    print(i)
+    try:
+        mouse = sessions['Mouse'][i]
+        session = sessions['Session'][i]
+        try:
+            folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/pophys/'
+            suffix = 'BCI'
+            main_npy_filename = f"data_main_{mouse}_{session}_{suffix}.npy"
+            main_npy_path = os.path.join(folder, main_npy_filename)
+            data = np.load(main_npy_path, allow_pickle=True)
+        except:
+            folder = r'//allen/aind/scratch/BCI/2p-raw/' + mouse + r'/' + session + '/'
+            suffix = 'BCI'
+            main_npy_filename = f"data_main_{mouse}_{session}_{suffix}.npy"
+            main_npy_path = os.path.join(folder, main_npy_filename)
+            data = np.load(main_npy_path, allow_pickle=True)
+            
+        rt = data['reward_time'];dt_si = data['dt_si']
+        rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
+        dfaxon = data['ch1']['df_closedloop']
+        step_vector, reward_vector, trial_start_vector = bts.bci_time_series_fun(folder, data, rt, dt_si)
+        
+        # Get average LC axon trace
+        lc = np.nanmean(dfaxon[:, :], axis=0)
+        
+        # Subtract mean (optional for cross-correlation)
+        df = df - np.nanmean(df)
+        lc = lc - np.nanmean(lc)
+        
+        # Compute cross-correlation
+        xcorr = correlate(lc, step_vector, mode='full')
+        lags = np.arange(-len(df)+1, len(df)) * dt_si  # convert lag to seconds
+        
+        # Plot cross-correlation
+        plt.figure(figsize=(5, 3))
+        ind = round(len(lags)/2)
+        window = 100
+        plt.plot(lags[ind - window:ind + window], xcorr[ind-window:ind+window], color='purple')
+        plt.axvline(0, linestyle='--', color='k', linewidth=1)
+        plt.xlabel('Lag (s)')
+        plt.xlabel('Lag (s)\n\n← LC leads        lickport leads →', fontsize=10)
+        plt.ylabel('Cross-correlation')
+        plt.title('lickport vs LC axon')
+        plt.tight_layout()
+        plt.show()
