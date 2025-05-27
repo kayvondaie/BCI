@@ -583,33 +583,5 @@ plt.show()
 
 print(f"Pearson r = {r:.3f}, p = {p:.2e}")
 #%%
-import shap
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# Make sure your model is already trained on X_clean and y_clean
-# Example:
-# model = GradientBoostingRegressor(...).fit(X_clean, y_clean)
-
-# Use the model trained on top 3 features
-explainer = shap.TreeExplainer(model_full)  # model_full is your refit model
-interaction_values = explainer.shap_interaction_values(X_top3)
-
-# Compute mean absolute interaction values
-mean_interactions = np.abs(interaction_values).mean(axis=0)
-
-# Plot the heatmap
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-
-interaction_df = pd.DataFrame(mean_interactions, index=top3, columns=top3)
-
-plt.figure(figsize=(6, 5))
-sns.heatmap(interaction_df, cmap="viridis", annot=True, fmt=".2e")
-plt.title("SHAP Interaction Matrix (Top 3 Features)")
-plt.tight_layout()
-plt.show()
 

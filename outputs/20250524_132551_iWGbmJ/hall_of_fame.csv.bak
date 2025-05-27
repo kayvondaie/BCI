@@ -1,0 +1,12 @@
+Complexity,Loss,Equation
+1,0.9999999,"7.0039096e-5"
+3,0.9996697,"Delta_THR * 0.06691251"
+4,0.9996692,"abs(RPE) * -0.003380502"
+5,0.99925214,"RPE * (Delta_THR * -0.009558784)"
+6,0.99889773,"Delta_THR * (exp(Delta_THR) * Delta_HIT)"
+7,0.99594617,"(Delta_HIT / (-1.4730759 - Delta_THR)) * -0.11217224"
+8,0.99579173,"Delta_THR * (-0.08140483 / (abs(Delta_HIT) - 0.8622883))"
+10,0.99471104,"(Delta_THR * -0.467735) * abs(Delta_HIT / (0.8531655 - RPE))"
+11,0.99333817,"((Delta_HIT + 0.18707897) * Delta_THR) * ((Delta_THR + 2.9961684) / 2.0242074)"
+12,0.99167037,"log(Delta_HIT + 1.2346518) * ((Delta_THR * (Delta_THR + 3.0845985)) / 2.2524927)"
+13,0.991101,"(Delta_HIT + 0.19208162) * ((Delta_THR * (Delta_THR + (2.4473195 - Delta_HIT))) / 1.704051)"

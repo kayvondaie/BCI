@@ -1,0 +1,13 @@
+Complexity,Loss,Equation
+1,0.9999999,"-3.9004575e-5"
+3,0.9988496,"-0.085029095 / RT"
+4,0.99719495,"Delta_HIT * sin(Delta_THR)"
+5,0.99637884,"(-0.18457474 / RT) / RT"
+6,0.9957368,"sin(Delta_THR * (Delta_HIT + 0.6370155))"
+7,0.99402016,"(0.28723812 - (0.50269383 / RT)) / RT"
+8,0.9939721,"tanh(((-0.52846193 / RT) + 0.3002626) / RT)"
+9,0.9929597,"(0.36446103 - (0.64523214 / RT)) / (RT + THR)"
+10,0.9924765,"(sin(THR * Delta_THR) * Delta_THR) * (Delta_HIT + 0.28348222)"
+11,0.99129295,"(sin(tanh(THR) * Delta_THR) * Delta_THR) * (Delta_HIT + 0.36920252)"
+12,0.98937196,"sin((Delta_THR * (((Delta_HIT * 0.49197128) + 0.28268793) * Delta_THR)) * Delta_THR)"
+14,0.9884248,"sin(((Delta_THR * ((Delta_HIT * 0.49197128) + 0.28268793)) * Delta_THR) * Delta_THR) / 0.7138835"
