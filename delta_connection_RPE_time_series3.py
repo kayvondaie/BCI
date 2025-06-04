@@ -52,8 +52,8 @@ hit_taus  = [int(round(x / dt_si)) for x in [60, 130]]
 ts_taus   = [int(round(x / dt_si)) for x in [60, 130]]
 param_grid = list(itertools.product(step_gains, hit_gains, ts_gains, step_taus, hit_taus, ts_taus))
 
-for sii in range(len(session_inds)):
-#for sii in range(si,si+1):
+#for sii in range(len(session_inds)):
+for sii in range(si,si+1):
     print(sii)
     mouse = list_of_dirs['Mouse'][session_inds[sii]]
     session = list_of_dirs['Session'][session_inds[sii]]

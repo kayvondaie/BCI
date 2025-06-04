@@ -226,6 +226,7 @@ plt.title("HI vs RT (all sessions)")
 plt.tight_layout()
 plt.show()
 #%%
+from scipy.stats import ttest_ind
 X_list = []
 y_list = []
 rt_list = []
@@ -237,7 +238,7 @@ for i in range(len(HIb)):
     thr = np.asarray(THR[i])[:n]
     if len(thr) <= 2 or thr[2] == 0:
         continue
-    thr_norm = thr / thr[2]
+    thr_norm = (thr ) / thr[2]
     X_list.append(thr_norm)
     y_list.append((hi) / np.nanstd(hi))
     rt_list.append(RT[i])
@@ -245,24 +246,36 @@ for i in range(len(HIb)):
 x = np.concatenate(X_list)
 y = np.concatenate(y_list)
 z = np.concatenate(rt_list)
+ind = np.where(np.isnan(x)==0)[0]
+x = x[ind];y = y[ind]; z=z[ind]
 
 pf.mean_bin_plot(y,x,10,1,1,'k');plt.xlabel('HI');plt.ylabel('THR')
 
-b = 1.1
-ind_p = np.where((y > 0) & (x < b))[0]
-ind_n = np.where((y < 0) & (x < b))[0]
+b = 0
+ind_p = np.where((y > 0) & (x > b))[0]
+ind_n = np.where((y < 0) & (x > b))[0]
 plt.show()
 plt.bar((1,2),(np.nanmean(z[ind_n]),np.nanmean(z[ind_p])))
+t_stat, p = ttest_ind(z[ind_n],z[ind_p]);print(p)
+
 plt.show()
-pf.mean_bin_plot(y[ind_n],z[ind_n],5,1,1,'k')
-pf.mean_bin_plot(y[ind_p],z[ind_p],5,1,1,'r')
+pf.mean_bin_plot(y[ind_n],z[ind_n],3,1,1,'k')
+pf.mean_bin_plot(y[ind_p],z[ind_p],3,1,1,'r')
+plt.xlabel('HI');plt.ylabel('RT')
 
 #%%
-b = 1.1
+plt.figure(figsize = (7,3))
+plt.subplot(121)
+b = 1.5
 ind = np.where((z < 20))[0]
-pf.mean_bin_plot(z[ind],y[ind],15,1,1,'k')
-r,p = pearsonr(z[ind],y[ind])
+pf.mean_bin_plot((z[ind]),y[ind],9,1,1,'k')
+r,p = pearsonr(x[ind],y[ind])
 print(p)
+plt.xlabel('Time to reward (s)')
+plt.ylabel('Hebbian Index')
+
+plt.subplot(122)
+pf.mean_bin_plot(x,y,3,1,1,'k');plt.xlabel('THR');plt.ylabel('HI')
 #%%
 ind = np.where((z<20) & (x < 1.1));
 pf.mean_bin_plot(y[ind],z[ind],7,1,1,'k')
@@ -271,6 +284,55 @@ ind = np.where((z<20) & (x > 1.1));
 pf.mean_bin_plot(y[ind],z[ind],7,1,1,'r')
 plt.xlabel("HI")
 plt.ylabel("RT")
+plt.plot([],[],'r',label = 'high thr')
+plt.plot([],[],'k',label = 'low thr')
+plt.legend()
+#%%
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+
+# Construct design matrix
+df = pd.DataFrame({
+    'HI': y,
+    'RT_shifted': z,
+    'THR_norm': x,
+    'abs_HI': np.abs(y),
+    'log_THR_norm': np.log(x + 1.01)  # offset to avoid log(0)
+})
+
+# Fit: HI ~ RT - 3
+X1 = sm.add_constant(df[['RT_shifted']])
+model1 = sm.OLS(df['HI'], X1).fit()
+print("HI ~ RT:")
+print(model1.summary())
+
+# Fit: abs(HI) ~ THR_norm
+X2 = sm.add_constant(df[['THR_norm', 'log_THR_norm']])
+model2 = sm.OLS(df['abs_HI'], X2).fit()
+print("\nabs(HI) ~ THR_norm:")
+print(model2.summary())
+
+import matplotlib.pyplot as plt
+
+# HI vs. RT-3
+plt.figure(figsize=(6, 4))
+plt.scatter(df['RT_shifted'], df['HI'], alpha=0.3)
+plt.plot(df['RT_shifted'], model1.predict(X1), color='red')
+plt.xlabel("RT - 3")
+plt.ylabel("HI")
+plt.title("HI vs RT (shifted)")
+plt.tight_layout()
+
+# abs(HI) vs. THR_norm
+plt.figure(figsize=(6, 4))
+plt.scatter(df['THR_norm'], df['abs_HI'], alpha=0.3)
+plt.plot(df['THR_norm'], model2.predict(X2), color='green')
+plt.xlabel("THR_norm")
+plt.ylabel("abs(HI)")
+plt.title("abs(HI) vs THR_norm")
+plt.tight_layout()
+plt.show()
 
 
 
