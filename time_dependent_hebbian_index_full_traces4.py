@@ -27,12 +27,12 @@ mice = ["BCI102","BCI105","BCI106","BCI109"]
 for mi in range(len(mice)):
     session_inds = np.where((list_of_dirs['Mouse'] == mice[mi]) & (list_of_dirs['Has data_main.npy']==True))[0]
     #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
-    si = 5
+    si = 6
     
     pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean
     fit_type      = 'ridge'     #ridge, pinv
     alpha         =  .1        #only used for ridge
-    
+    epoch         =  'reward'  # reward, step, trial_start
     for sii in range(0,len(session_inds)):        
     #for sii in range(si,si+1):
         num_bins      =  2000         # number of bins to calculate correlations
@@ -111,7 +111,9 @@ for mi in range(len(mice)):
         trl = F.shape[2]
         tsta = np.arange(0,12,data['dt_si'])
         tsta=tsta-tsta[int(2/dt_si)]
-    
+        if epoch == 'steps':
+            epoch = 'step'
+        
         # Initialize arrays
         kstep = np.zeros((F.shape[1], trl))
         krewards = np.zeros((F.shape[1], trl))
@@ -230,19 +232,22 @@ for mi in range(len(mice)):
             rt_bin[i] = np.nanmean(rt[ind])
             thr_bin[i] = np.nanmax(BCI_thresholds[1, ind])
             rpe_bin[i] = np.nanmean(rpe[ind])
-
-            step_list = [s for s in data['step_time'][ind] if len(s) > 0]
-            step_list = [s for s in data['reward_time'][ind] if len(s) > 0]
-            if len(step_list) > 0:
-                steps = np.concatenate(step_list)
-                indices_steps = get_indices_around_steps(tsta, steps, pre=10, post=10)
-                indices_steps = indices_steps[indices_steps < F.shape[0]]
-                tpts = indices_steps
-            else:
-                tpts = np.array([], dtype=int)
-
-            #tpts = np.where(np.isnan(F[:,0,ind]) == 0)[0]
-            #tpts = np.where((tsta > 0) & (tsta < 2))[0]
+            
+            if epoch == 'step' or epoch == 'reward':
+                if epoch == 'step':
+                    step_list = [s for s in data['step_time'][ind] if len(s) > 0]
+                if epoch == 'reward':
+                    step_list = [s for s in data['reward_time'][ind] if len(s) > 0]
+                if len(step_list) > 0:
+                    steps = np.concatenate(step_list)
+                    indices_steps = get_indices_around_steps(tsta, steps, pre=20, post=0)
+                    indices_steps = indices_steps[indices_steps < F.shape[0]]
+                    tpts = indices_steps
+                else:
+                    tpts = np.array([], dtype=int)
+            elif epoch == 'trial_start':                    
+                tpts = np.where(np.isnan(F[:,0,ind]) == 0)[0]
+                #tpts = np.where((tsta > 0) & (tsta < 2))[0]
             k_concat = F[:,:,np.ravel(ind)][np.ravel(tpts),:,:]
             k_concat = k_concat.transpose(2, 0, 1).reshape(-1, k_concat.shape[1])
             k_concat = k_concat[np.where(np.isnan(k_concat[:,0])==0)[0],:];
@@ -535,6 +540,10 @@ for mi in range(len(mice)):
         
         ind = np.where((stimDist.flatten()>0)&(stimDist.flatten()<10))
         CCdirect.append(np.corrcoef(AMP[0].flatten()[ind],AMP[1].flatten()[ind])[0,1])
+
+
+
+
 #%%
 from scipy.stats import ttest_ind
 import numpy as np
