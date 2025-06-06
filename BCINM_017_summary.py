@@ -6,7 +6,7 @@ Created on Wed May 21 12:03:24 2025
 """
 import session_counting
 import data_dict_create_module_test as ddc
-sessions = session_counting.counter2(["BCINM_020"],'010112',has_pophys=False)
+sessions = session_counting.counter2(["BCINM_027"],'010112',has_pophys=False)
 #%%
 # for i in range(len(sessions)):
 #     try:
@@ -80,7 +80,7 @@ for i in range(axon_rew.shape[0]):
 # Plot with time on x-axis
 ind = np.where(depth > -20.1)[0]
 
-early = 1;
+early = 0;
 late = 2
 plt.figure(figsize = (6,3))
 
@@ -222,9 +222,9 @@ plt.show()
 
 #%%
 fts = np.array(AXON_TS).T
-#plt.plot(np.nanmean(fts,axis=1))
-#plt.imshow(fts.T,aspect = 'auto')
-#plt.show()
+plt.plot(np.nanmean(fts,axis=1))
+plt.imshow(fts.T,aspect = 'auto')
+plt.show()
 trial_start_modulation = np.nanmean(fts[39:42,:],axis=0) - np.nanmean(fts[30:35,:],axis=0)
 plt.plot(trial_start_modulation,'k.-')
 
