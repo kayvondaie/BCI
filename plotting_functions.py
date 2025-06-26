@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 from scipy.stats import pearsonr
 
-def mean_bin_plot(xx, yy, col, pltt, A, color):
+def mean_bin_plot(xx, yy, col = 5, pltt = 1, A = 1, color = 'k'):
     xx = np.reshape(xx, (-1, 1))
     yy = np.reshape(yy, (-1, 1))
     if len(color) == 0:

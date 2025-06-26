@@ -17,6 +17,7 @@ import bci_time_series as bts
 from BCI_data_helpers import *
 from scipy.stats import pearsonr
 from scipy.signal import correlate
+from scipy.stats import ttest_1samp
 import re
 HI, HIb, HIc = [], [], []
 RT, RPE, HIT = [], [], []
@@ -25,9 +26,9 @@ CC_RPE, CC_RT, CC_MIS, CORR_RPE, CORR_RT = [], [], [], [], []
 RT_WINDOW, HIT_WINDOW, THR_WINDOW = [], [], []
 PTRL, PVAL, RVAL = [], [], []
 Ddirect, Dindirect, CCdirect = [], [], []
-TST, CN, MOUSE, SESSION = [], [], [], []
+NUM_STEPS,TST, CN, MOUSE, SESSION = [], [], [], [],[]
 
-mice = ["BCI102","BCI105","BCI106","BCI109"]
+mice = ["BCI102","BCI105","BCI106","BCI109","BCI103","BCI104","BCI93","BCI107"]
 for mi in range(len(mice)):
     session_inds = np.where((list_of_dirs['Mouse'] == mice[mi]) & (list_of_dirs['Has data_main.npy']==True))[0]
     #session_inds = np.where((list_of_dirs['Mouse'] == 'BCI103') & (list_of_dirs['Session']=='012225'))[0]
@@ -36,7 +37,7 @@ for mi in range(len(mice)):
     pairwise_mode = 'dot_prod_no_mean'  #dot_prod, noise_corr,dot_prod_no_mean
     fit_type      = 'ridge'     #ridge, pinv
     alpha         =  .1        #only used for ridge
-    epoch         =  'step'  # reward, step, trial_start
+    epoch         =  'reward'  # reward, step, trial_start
     
     for sii in range(0,len(session_inds)):        
     #for sii in range(si,si+1):
@@ -404,9 +405,6 @@ for mi in range(len(mice)):
             hit_window[i] = np.nanmean(hit_bin[i:i+window])
             thr_window[i] = np.nanmax(thr_bin[i:i+window])
             
-            
-            
-            
         plt.subplot(236)
         #plt.plot(trial_bins[:-window], corr_rpe,'k')
         plt.plot(trial_bins[:-window], corr_rpe,'k');
@@ -472,9 +470,34 @@ for mi in range(len(mice)):
         CC_RPE.append(cc_rpe)
         CC_RT.append(cc_rt)
         CC_MIS.append(cc_mis)
-       
+        NUM_STEPS.append([len(x) for x in data['step_time']])
+#%%
+hib = [hib[:]/np.nanstd(hib[0:]) for hib in HIb]
+pf.mean_bin_plot(np.concatenate(TST),np.concatenate(hib),5,1,1,'k');
+plt.xlabel('Expected reward')
+plt.ylabel('Hebbian index at reward')
+x = np.array(CC_MIS);x=x[~np.isnan(x)]
+h, p = ttest_1samp(x, popmean=0)
+print(p)
+#%%
+cc,x,y = [],[],[]
+for i in range(len(RT)):
+    rt = RT[i]
+    rpe = RPE[i]
+    hib = HIb[i]
+    hib = hib/np.nanstd(hib)    
+    tst = TST[i]        
+    ind = np.where((rt > 0) & (hib!=0))[0]
+    ind = np.where((rt > 0) & (hib!=0) & (np.isnan(hib)==0))[0]
+    rpe = compute_rpe(rt[ind], baseline=10, window=1, fill_value=0)
+    cc.append(np.corrcoef(rpe[:-1],tst[ind][1:])[0,1])
+    x.append(rpe[:-1])
+    y.append(tst[ind][1:])
+    #plt.scatter(hib[ind],rpe[ind])
 
-
+pf.mean_bin_plot(np.concatenate(y),np.concatenate(x),4)
+c,p = pearsonr(np.concatenate(x),np.concatenate(y))
+np.nanmean(np.array(cc)<0)
 #%%
 from scipy.stats import ttest_ind
 import numpy as np

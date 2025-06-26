@@ -132,6 +132,20 @@ def compute_rpe(rt, baseline=3.0, window=10, fill_value=np.nan):
         rpe[i] = avg - rt_clean[i]
     return rpe
 
+def compute_rpe_standard(rt, baseline=3.0, window=10, fill_value=np.nan):
+
+    rpe = np.full_like(rt, np.nan, dtype=np.float64)
+    rt_clean = np.where(np.isnan(rt), fill_value, rt)
+
+    for i in range(len(rt)):
+        if i == 0:
+            avg = baseline
+        else:
+            start = max(0, i - window)
+            avg = np.nanmean(rt_clean[start:i]) if i > start else baseline
+        rpe[i] = avg - rt_clean[i]
+    return rpe
+
 def compute_amp_from_photostim(mouse, data, folder):
     """
     Compute AMP values (average ΔF/F in response to photostim) for each epoch.
@@ -222,7 +236,8 @@ def compute_trial_mismatch_score(
     step_vector,
     tau=400,
     target_window=1,
-    scale_factor=5
+    scale_factor=5,
+    normalized = 0
 ):
     """
     Computes a trial-averaged mismatch score between expected step rate and neural-target similarity.
@@ -256,7 +271,13 @@ def compute_trial_mismatch_score(
         x[np.isnan(x)] = 0
         y[np.isnan(y)] = 0
         neural_target_similarity[ti] = np.dot(x, y)
+        if normalized == 1:
+            #neural_target_similarity[ti] = np.dot(x - np.nanmean(x), y - np.nanmean(y)) / (np.linalg.norm(x) * np.linalg.norm(y) + 1e-10)
+            neural_target_similarity[ti] = np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y) + 1e-10)
 
+        
+
+    neural_target_similarity_raw = np.copy(neural_target_similarity)
     # === Normalize similarity between 0 and 1 ===
     neural_target_similarity -= np.nanmin(neural_target_similarity)
     neural_target_similarity /= np.nanmax(neural_target_similarity)
@@ -275,11 +296,13 @@ def compute_trial_mismatch_score(
     trial_mismatch_score = np.zeros(n_trials)
     smooth_step_trial = np.zeros(n_trials)
     target_similarity_trial = np.zeros(n_trials)
+    target_similarity_trial_raw = np.zeros(n_trials)
     for i in range(n_trials):
         start = trial_start_inds[i]
         end = trial_start_inds[i + 1] if i < n_trials - 1 else len(target_drive_mismatch)
         trial_mismatch_score[i] = np.nanmean(target_drive_mismatch[start:end])
         smooth_step_trial[i] = np.nanmean(smooth_step[start:end])
         target_similarity_trial[i] = np.nanmean(neural_target_similarity[start:end])
+        target_similarity_trial_raw[i] = np.nanmean(neural_target_similarity_raw[start:end])
     
-    return trial_mismatch_score, smooth_step_trial, target_similarity_trial
+    return trial_mismatch_score, smooth_step_trial, target_similarity_trial, target_similarity_trial_raw
