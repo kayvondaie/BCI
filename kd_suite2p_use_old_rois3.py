@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI108/061125/pophys/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI108/060925/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI115/070125_2/pophys/']
+old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -43,8 +43,8 @@ if 'old_folder' in locals():
 
 savefolders = dict()
 savefolders[0] = 'BCI';
-savefolders[1] = 'photostim_single';
-savefolders[2] = 'photostim_single2';
+savefolders[1] = 'spont_pre';
+savefolders[2] = 'spont_post';
 savefolders[3] = 'spont_pre';
 savefolders[4] = 'spont_post';
 #savefolders[2] = 'spont';
@@ -144,7 +144,7 @@ for ei in range(0,len(ind)):
     
     ops['do_bidiphase'] = True
     ops['reg_tif'] = False # save registered movie as tif files
-    ops['delete_bin'] = 0
+    ops['delete_bin'] = 1
     ops['keep_movie_raw'] = 0
     ops['fs'] = 20
     ops['nchannels'] = 1
@@ -181,7 +181,7 @@ for ei in range(0,len(ind)):
         
         folder = ops['data_path'][0]
         file = folder + ops['tiff_list'][0]                
-        shutil.copy(ops['save_path0'] +r'/suite2p/plane0/data.bin',ops['save_path0']+ops['save_folder'] + r'/plane0/data.bin')
+        #shutil.copy(ops['save_path0'] +r'/suite2p/plane0/data.bin',ops['save_path0']+ops['save_folder'] + r'/plane0/data.bin')
     file = folder + ops['tiff_list'][0]                
     siHeader = extract_scanimage_metadata.extract_scanimage_metadata(file)
     siBase = dict()
