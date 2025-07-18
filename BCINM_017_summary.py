@@ -6,7 +6,7 @@ Created on Wed May 21 12:03:24 2025
 """
 import session_counting
 import data_dict_create_module_test as ddc
-sessions = session_counting.counter2(["BCINM_020"],'010112',has_pophys=False)
+sessions = session_counting.counter2(["BCINM_017"],'010112',has_pophys=False)
 #%%
 # for i in range(len(sessions)):
 #     try:
@@ -81,7 +81,7 @@ for i in range(axon_rew.shape[0]):
 ind = np.where(depth > -20.1)[0]
 
 early = 1;
-late = 2
+late = 22
 plt.figure(figsize = (6,3))
 
 plt.subplot(221);
@@ -222,14 +222,16 @@ plt.show()
 
 #%%
 fts = np.array(AXON_TS).T
-#plt.plot(np.nanmean(fts,axis=1))
-#plt.imshow(fts.T,aspect = 'auto')
-#plt.show()
+plt.plot(np.nanmean(fts,axis=1))
+plt.imshow(fts.T,aspect = 'auto')
+plt.show()
 trial_start_modulation = np.nanmean(fts[39:42,:],axis=0) - np.nanmean(fts[30:35,:],axis=0)
 plt.plot(trial_start_modulation,'k.-')
 
 
 #%%
+AXON_REW, AXON_TS, XCORR = [], [], []
+SESSION = []
 import bci_time_series as bts
 for i in range(len(sessions)):
     print(i)
@@ -253,27 +255,207 @@ for i in range(len(sessions)):
         rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
         dfaxon = data['ch1']['df_closedloop']
         step_vector, reward_vector, trial_start_vector = bts.bci_time_series_fun(folder, data, rt, dt_si)
+
+        r_ind = np.where(reward_vector == 1)[0]
+        pre = 40
+        post = 40
+        frew_axon = np.zeros((pre+post,len(r_ind)))
+        time = np.arange(0,dt_si*(pre+post),dt_si)
+        time = time - time[pre]
+        for i in range(len(r_ind)):
+            if r_ind[i] > pre and r_ind[i] + post < dfaxon.shape[1]:
+                frew_axon[:,i] = np.nanmean(dfaxon[:,r_ind[i]-pre:r_ind[i]+post],axis = 0)
+        AXON_REW.append(np.nanmean(frew_axon,axis=1))
+        Faxon = data['ch1']['F']
+        AXON_TS.append(np.nanmean(np.nanmean(Faxon,axis=2),axis=1))
+        SESSION.append(data['session'])
         
+        
+        rt = data['reward_time'];dt_si = data['dt_si']
+        rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
+        dfaxon = data['ch1']['df_closedloop']
+        step_vector, reward_vector, trial_start_vector = bts.bci_time_series_fun(folder, data, rt, dt_si)
+        
+        # Get conditioned neuron trace
+        cn = data['conditioned_neuron'][0][0]
+        df = data['df_closedloop'][cn, :]
+
         # Get average LC axon trace
         lc = np.nanmean(dfaxon[:, :], axis=0)
-        
+
         # Subtract mean (optional for cross-correlation)
         df = df - np.nanmean(df)
         lc = lc - np.nanmean(lc)
-        
+
         # Compute cross-correlation
         xcorr = correlate(lc, step_vector, mode='full')
         lags = np.arange(-len(df)+1, len(df)) * dt_si  # convert lag to seconds
-        
+
         # Plot cross-correlation
         plt.figure(figsize=(5, 3))
         ind = round(len(lags)/2)
         window = 100
         plt.plot(lags[ind - window:ind + window], xcorr[ind-window:ind+window], color='purple')
+        XCORR.append(xcorr[ind-window:ind+window])
         plt.axvline(0, linestyle='--', color='k', linewidth=1)
         plt.xlabel('Lag (s)')
         plt.xlabel('Lag (s)\n\n← LC leads        lickport leads →', fontsize=10)
         plt.ylabel('Cross-correlation')
-        plt.title('lickport vs LC axon')
+        plt.title('Conditioned neuron vs LC axon')
         plt.tight_layout()
         plt.show()
+    except:
+        continue
+
+# Stack the cross-correlations
+x = np.stack(XCORR, axis=1)  # shape: (window*2, n_sessions)
+
+# Create lag vector in seconds
+lag_range = np.arange(-window, window) * dt_si  # since window is in samples, multiply by dt
+
+# Plot heatmap
+plt.figure(figsize=(6, 4))
+plt.imshow(x.T, aspect='auto', extent=[lag_range[0], lag_range[-1], 0, x.shape[1]],
+           origin='lower', cmap='viridis')
+plt.colorbar(label='Cross-correlation')
+plt.xlabel('Lag (s)\n\n← LC leads        lickport leads →', fontsize=10)
+plt.ylabel('Session')
+plt.title('XCorr: Conditioned neuron vs LC axon' + ' ' + mouse)
+plt.tight_layout()
+plt.show()
+#%%
+plt.figure(figsize=(5, 3))
+ind = round(len(lags)/2)
+window = 100
+plt.plot(lags[ind - window:ind + window], np.nanmean(x,axis=1), color='purple')
+XCORR.append(xcorr[ind-window:ind+window])
+plt.axvline(0, linestyle='--', color='k', linewidth=1)
+plt.xlabel('Lag (s)')
+plt.xlabel('Lag (s)\n\n← LC leads        lickport leads →', fontsize=10)
+plt.ylabel('Cross-correlation')
+plt.title('Conditioned neuron vs LC axon')
+plt.tight_layout()
+plt.show()
+
+#%%
+
+
+#%%
+
+i = 4
+mouse = sessions['Mouse'][i]
+session = sessions['Session'][i]
+folder_base = f'//allen/aind/scratch/BCI/2p-raw/{mouse}/{session}/'
+folder = folder_base + 'pophys/' if os.path.exists(folder_base + 'pophys/') else folder_base
+data = np.load(os.path.join(folder, f"data_main_{mouse}_{session}_BCI.npy"), allow_pickle=True)
+import numpy as np
+import matplotlib.pyplot as plt
+#%%
+rt = data['reward_time'];dt_si = data['dt_si']
+rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
+dfaxon = data['ch1']['df_closedloop']
+step_vector, reward_vector, trial_start_vector = bts.bci_time_series_fun(folder, data, rt, dt_si)
+
+r_ind = np.where(reward_vector == 1)[0]
+pre = 40
+post = 40
+frew_axon = np.zeros((pre+post,len(r_ind)))
+time = np.arange(0,dt_si*(pre+post),dt_si)
+time = time - time[pre]
+for i in range(len(r_ind)):
+    if r_ind[i] > pre and r_ind[i] + post < dfaxon.shape[1]:
+        frew_axon[:,i] = np.nanmean(dfaxon[:,r_ind[i]-pre:r_ind[i]+post],axis = 0)
+AXON_REW.append(np.nanmean(frew_axon,axis=1))
+Faxon = data['ch1']['F']
+AXON_TS.append(np.nanmean(np.nanmean(Faxon,axis=2),axis=1))
+SESSION.append(data['session'])
+
+
+rt = data['reward_time'];dt_si = data['dt_si']
+rt = np.array([x[0] if len(x) > 0 else np.nan for x in data['reward_time']])
+dfaxon = data['ch1']['df_closedloop']
+step_vector, reward_vector, trial_start_vector = bts.bci_time_series_fun(folder, data, rt, dt_si)
+
+# Get conditioned neuron trace
+cn = data['conditioned_neuron'][0][0]
+df = data['df_closedloop'][cn, :]
+
+# Get average LC axon trace
+lc = np.nanmean(dfaxon[:, :], axis=0)
+
+# Subtract mean (optional for cross-correlation)
+df = df - np.nanmean(df)
+lc = lc - np.nanmean(lc)
+
+# Compute cross-correlation
+xcorr = correlate(lc, step_vector, mode='full')
+lags = np.arange(-len(df)+1, len(df)) * dt_si  # convert lag to seconds
+
+# Plot cross-correlation
+plt.figure(figsize=(10, 5))
+plt.subplot(2,5,1)
+ind = round(len(lags)/2)
+window = 100
+plt.plot(lags[ind - window:ind + window], xcorr[ind-window:ind+window], color='purple')
+XCORR.append(xcorr[ind-window:ind+window])
+plt.axvline(0, linestyle='--', color='k', linewidth=1)
+plt.xlabel('Lag (s)')
+plt.xlabel('Lag (s)\n\n← LC leads        lickport leads →', fontsize=10)
+plt.ylabel('Cross-correlation')
+plt.title('Conditioned neuron vs LC axon')
+plt.tight_layout()
+# Set trial index
+trial = 15
+num = 2
+for ti in range(trial,trial+9):
+    plt.subplot(2,5,num)    
+    # Extract and average LC axon activity for the trial
+    lc_trial = data['ch1']['F'][:, :, ti]  # shape: (n_rois, n_timepoints)
+    lc_mean = np.nanmean(lc_trial, axis=1)  # average across ROIs
+    
+    # Time vector
+    t = data['t_bci']  # should match length of lc_mean
+    
+    step_times = np.array(data['step_time'][ti])  # list of timestamps in same reference frame as t_bci
+    
+    # Plot
+    plt.plot(t[1:], lc_mean, label='LC axon avg dF/F', color='green')
+    
+    # Plot vertical lines for each step, but only label the first one
+    for i, st in enumerate(step_times):    
+        label = 'step' if i == 0 else ''
+        plt.plot((st, st), (.2, 0.4), 'k', label=label)
+    
+    rt = data['reward_time'][ti]
+    plt.plot((rt, rt), (.2, 0.4), 'b', label='Reward',linewidth = 2)
+    plt.xlabel('Time (s)')
+    plt.ylabel('dF/F')
+    plt.title(f'Trial {ti}')    
+    if num == 2:
+        plt.legend()
+    num = num + 1
+plt.tight_layout()
+#%%
+ti = 15
+# Extract and average LC axon activity for the trial
+lc_trial = data['ch1']['F'][:, :, ti]  # shape: (n_rois, n_timepoints)
+lc_mean = np.nanmean(lc_trial, axis=1)  # average across ROIs
+
+# Time vector
+t = data['t_bci']  # should match length of lc_mean
+
+step_times = np.array(data['step_time'][ti])  # list of timestamps in same reference frame as t_bci
+
+# Plot
+plt.plot(t[1:], lc_mean, label='LC axon avg dF/F', color='green')
+
+# Plot vertical lines for each step, but only label the first one
+for i, st in enumerate(step_times):    
+    label = 'step' if i == 0 else ''
+    plt.plot((st, st), (.2, 0.4), 'k', label=label)
+
+rt = data['reward_time'][ti]
+plt.plot((rt, rt), (.2, 0.4), 'b', label='Reward',linewidth = 2)
+plt.xlabel('Time (s)')
+plt.ylabel('dF/F')
+plt.title(f'Trial {ti}')    
