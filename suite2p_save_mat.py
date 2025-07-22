@@ -2,7 +2,7 @@ from suite2p.io import save_mat as save_mat_module
 import numpy as np
 import os
 
-folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/070125/pophys/suite2p_BCI/plane0/'
+
 ops = np.load(os.path.join(folder, 'ops.npy'), allow_pickle=True).item()
 
 # Load all files manually, handling optional ones
