@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI115/070725/pophys/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI111/072825/pophys/']
+#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
