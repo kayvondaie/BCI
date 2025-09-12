@@ -173,7 +173,8 @@ def compute_amp_from_photostim(mouse, data, folder):
     siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
     umPerPix = 1000 / float(siHeader['metadata']['hRoiManager']['scanZoomFactor']) / int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
 
-    for epoch_i in range(2):
+    n_epochs = 2 if 'photostim2' in data else 1
+    for epoch_i in range(n_epochs):
         if epoch_i == 0:
             stimDist = data['photostim']['stimDist'] * umPerPix
             favg_raw = data['photostim']['favg_raw']
