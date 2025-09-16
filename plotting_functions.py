@@ -55,6 +55,71 @@ def mean_bin_plot(xx, yy, col = 5, pltt = 1, A = 1, color = 'k'):
     #plt.title('P = ' + str(P))
     return X, Y, p
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
+
+def mean_bin_plot_shade(xx, yy, col=5, pltt=1, A=1, color='k', shade_color=None, alpha=0.2):
+    """
+    Bins data, plots mean ± SEM with shaded error instead of error bars.
+
+    Parameters
+    ----------
+    xx : array-like
+        X values
+    yy : array-like
+        Y values
+    col : int, optional
+        Number of bins (default=5)
+    pltt : int, optional
+        Plot flag (1 = plot, else skip)
+    A : float, optional
+        Scaling factor for y (default=1)
+    color : str, optional
+        Line color
+    shade_color : str, optional
+        Color for shaded region (default = same as line color)
+    alpha : float, optional
+        Transparency of shaded region (default=0.2)
+    """
+
+    xx = np.reshape(xx, (-1, 1))
+    yy = np.reshape(yy, (-1, 1))
+    if shade_color is None:
+        shade_color = color
+
+    x = xx
+    y = yy / A
+
+    # drop NaNs
+    mask = ~np.isnan(x)
+    x = x[mask]
+    y = y[mask]
+
+    # sort
+    order = np.argsort(x, axis=0).flatten()
+    x = x[order]
+    y = y[order]
+
+    # reshape into bins
+    row = len(x) // col
+    length = row * col
+    x = np.reshape(x[:length], (col, row))
+    y = np.reshape(y[:length], (col, row))
+
+    # means and sem
+    X = np.nanmean(x, axis=1)
+    Y = np.nanmean(y, axis=1)
+    stdEr = np.nanstd(y, axis=1) / np.sqrt(row)
+
+    if pltt == 1:
+        plt.plot(X, Y, 'o-', color=color, markersize=5)
+        plt.fill_between(X, Y - stdEr, Y + stdEr, color=shade_color, alpha=alpha)
+
+    r, p = pearsonr(X, Y)
+    return X, Y, p
+
+
 def tif_display(file_path,strt,skp):
    
     with Image.open(file_path) as img:
