@@ -471,6 +471,31 @@ plt.xlabel('Reward time (s)')
 plt.ylabel('Hebbian index at ' + epoch)
 print('p = ' + str(p))
 #%%
+# Compute overall median difference per trial
+dy = np.array([np.nanmedian(a - b) for a, b in zip(YY, YO)])
+
+# Compute directional mean difference per trial (e.g., where YO < 0)
+dyi = []
+for a, b in zip(YY, YO):
+    m = b < 10  # change to b > 0 for other direction
+    if np.any(m):
+        dyi.append(np.nanmean((a - b)[m]))
+    else:
+        dyi.append(np.nan)
+dyi = np.array(dyi)
+
+# Trial-wise predictor (e.g., RT)
+p = np.array([np.nanmean(x[0:40]) for x in RT])
+
+# Mask to threshold dyi
+valid = (~np.isnan(dyi)) & (~np.isnan(p)) & (dyi > -0.1)
+
+# Plot and compute correlation
+pf.mean_bin_plot_shade(p[valid], dyi[valid], 5)
+r, pp = pearsonr(p[valid], dyi[valid])
+print(f"p = {pp:.3g}, r = {r:.3f}")
+
+#%%
 hib = [hib[:]/np.nanstd(hib[0:]) for hib in HIb]
 pf.mean_bin_plot(10-np.concatenate(RT),np.concatenate(hib),5,1,1,'k');
 
