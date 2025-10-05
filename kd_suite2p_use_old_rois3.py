@@ -24,8 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI115/070125_2/pophys/']
-old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI111/072825/pophys/']
+#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -144,7 +144,7 @@ for ei in range(0,len(ind)):
     
     ops['do_bidiphase'] = True
     ops['reg_tif'] = False # save registered movie as tif files
-    ops['delete_bin'] = 1
+    ops['delete_bin'] = False
     ops['keep_movie_raw'] = 0
     ops['fs'] = 20
     ops['nchannels'] = 1

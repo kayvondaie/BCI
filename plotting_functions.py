@@ -55,6 +55,71 @@ def mean_bin_plot(xx, yy, col = 5, pltt = 1, A = 1, color = 'k'):
     #plt.title('P = ' + str(P))
     return X, Y, p
 
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import pearsonr
+
+def mean_bin_plot_shade(xx, yy, col=5, pltt=1, A=1, color='k', shade_color=None, alpha=0.2):
+    """
+    Bins data, plots mean ± SEM with shaded error instead of error bars.
+
+    Parameters
+    ----------
+    xx : array-like
+        X values
+    yy : array-like
+        Y values
+    col : int, optional
+        Number of bins (default=5)
+    pltt : int, optional
+        Plot flag (1 = plot, else skip)
+    A : float, optional
+        Scaling factor for y (default=1)
+    color : str, optional
+        Line color
+    shade_color : str, optional
+        Color for shaded region (default = same as line color)
+    alpha : float, optional
+        Transparency of shaded region (default=0.2)
+    """
+
+    xx = np.reshape(xx, (-1, 1))
+    yy = np.reshape(yy, (-1, 1))
+    if shade_color is None:
+        shade_color = color
+
+    x = xx
+    y = yy / A
+
+    # drop NaNs
+    mask = ~np.isnan(x)
+    x = x[mask]
+    y = y[mask]
+
+    # sort
+    order = np.argsort(x, axis=0).flatten()
+    x = x[order]
+    y = y[order]
+
+    # reshape into bins
+    row = len(x) // col
+    length = row * col
+    x = np.reshape(x[:length], (col, row))
+    y = np.reshape(y[:length], (col, row))
+
+    # means and sem
+    X = np.nanmean(x, axis=1)
+    Y = np.nanmean(y, axis=1)
+    stdEr = np.nanstd(y, axis=1) / np.sqrt(row)
+
+    if pltt == 1:
+        plt.plot(X, Y, 'o-', color=color, markersize=5)
+        plt.fill_between(X, Y - stdEr, Y + stdEr, color=shade_color, alpha=alpha)
+
+    r, p = pearsonr(X, Y)
+    return X, Y, p
+
+
 def tif_display(file_path,strt,skp):
    
     with Image.open(file_path) as img:
@@ -64,37 +129,38 @@ def tif_display(file_path,strt,skp):
     imgs = np.stack(frames, axis=2)# imgs is now a 3D array where imgs[:,:,i] is the i-th frame of the TIFF file
     return imgs
 
-def show_rois(ops,stat,roi_index):
+def show_rois(ops, stat, roi_index):
     import numpy as np
+    import matplotlib.pyplot as plt
+
     img = ops['meanImg']
-    # Create an empty RGBA image with the same shape as the original image
     rgba_img = np.zeros((img.shape[0], img.shape[1], 4), dtype=np.float32)
-    
-    # Set the grayscale image to the RGB channels of the RGBA image
-    normalized_img = img / img.max()  # Normalizing the image to [0, 1] range
-    rgba_img[..., 0] = normalized_img
-    rgba_img[..., 1] = normalized_img
-    rgba_img[..., 2] = normalized_img
-    rgba_img[..., 3] = 1.0  # Fully opaque initially
-    
-    # Create an overlay mask for the ROIs
+
+    # Normalize and set background grayscale
+    normalized_img = img / img.max()
+    rgba_img[..., :3] = np.stack([normalized_img]*3, axis=-1)
+    rgba_img[..., 3] = 1.0
+
+    # Create an overlay mask
     overlay = np.zeros_like(rgba_img)
-    
-    # Loop through each ROI and fill the overlay
-    for roi in stat[roi_index]:
-        ypix = roi['ypix']  # Y-coordinates for the current ROI
-        xpix = roi['xpix']  # X-coordinates for the current ROI
-        overlay[ypix, xpix, 0] = 1  # Set the green channel to 1 for ROI pixels
-        overlay[ypix, xpix, 3] = 0.5  # Set the alpha channel to 0.5 for ROI pixels
-    
-    # Display the grayscale image
-    plt.imshow(img/8, cmap='gray', vmin=0,vmax=np.percentile(img,30))
-    
-    # Overlay the RGBA image
+
+    # Ensure roi_index is a list
+    if isinstance(roi_index, int):
+        roi_index = [roi_index]
+
+    for idx in roi_index:
+        roi = stat[idx]
+        ypix = roi['ypix']
+        xpix = roi['xpix']
+        overlay[ypix, xpix, 0] = 1     # Red channel
+        overlay[ypix, xpix, 3] = 0.5   # Alpha
+
+    # Show background image
+    plt.imshow(img / 8, cmap='gray', vmin=0, vmax=np.percentile(img, 30))
+
+    # Overlay ROIs
     plt.imshow(overlay, alpha=1)
-    
-    # Show the plot with the overlaid mask
-    plt.axis('off')  # Hide the axes
+    plt.axis('off')
     plt.show()
 
 
@@ -302,3 +368,17 @@ def plot_bootstrap_fit(x, y, n_boot=1000, label=None, color='k', alpha_fill=0.2)
     plt.fill_between(x_fit, y_lower, y_upper, color=color, alpha=alpha_fill)
     return slope_median, pval
     
+def remove_spines(axes, sides=('top', 'right', 'left', 'bottom')):
+    """
+    Remove axis spines (bounding boxes) from a set of axes.
+    
+    Parameters
+    ----------
+    axes : array-like of matplotlib axes
+        e.g. result of plt.subplots(...)[1].flatten()
+    sides : tuple
+        Which spines to remove. Default = all 4.
+    """
+    for ax in axes:
+        for side in sides:
+            ax.spines[side].set_visible(False)
