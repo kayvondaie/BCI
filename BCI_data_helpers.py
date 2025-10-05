@@ -169,11 +169,17 @@ def compute_amp_from_photostim(mouse, data, folder):
     AMP = []
 
     # Load scan parameters to compute microns per pixel
-    siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
-    siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+    try:
+        siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
+        siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+        dt_si = data['dt_si']
+    except:
+        siHeader_path = folder + r'/suite2p_photostim_single/plane0/siHeader.npy'
+        siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+        dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
     umPerPix = 1000 / float(siHeader['metadata']['hRoiManager']['scanZoomFactor']) / int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
-
-    for epoch_i in range(2):
+    n_epochs = 2 if 'photostim2' in data else 1
+    for epoch_i in range(n_epochs):
         if epoch_i == 0:
             stimDist = data['photostim']['stimDist'] * umPerPix
             favg_raw = data['photostim']['favg_raw']
@@ -186,8 +192,8 @@ def compute_amp_from_photostim(mouse, data, folder):
         for i in range(favg.shape[1]):
             baseline = np.nanmean(favg_raw[0:3, i])
             favg[:, i] = (favg_raw[:, i] - baseline) / baseline
-
-        dt_si = data['dt_si']
+            
+        #dt_si = data['dt_si']
         after = int(np.floor(0.2 / dt_si))
         before = int(np.floor(0.2 / dt_si))
         if mouse == "BCI103":
