@@ -858,6 +858,7 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['favg_raw'], data[key_name]['stim_params'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, 0)
     
     offset = seq_offset(data,key_name)
+    offset = 0
     if offset != 0:
         print('offset detected for ' + key_name)
         data[key_name] = dict()
