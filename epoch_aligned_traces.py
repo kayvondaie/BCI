@@ -74,7 +74,32 @@ pre = pre2;late = late2;early = early2;rew = rew2;
 # early = early - aft
 # late = late - aft
 
+ind = np.where((pre < 11))[0]
+plt.figure(figsize=(6,8))
 
+for i,(vec,label) in enumerate([(pre,"Pre"),(early,"Early"),(late,"Late"),(rew,"Rew")],1):
+    ts = np.arange(sta.shape[0]) * dt_si - 2
+    tr = np.arange(rta.shape[0]) * dt_si - 2
+
+    y1 = sta[:,ind] @ vec[ind]
+    y2 = rta[:,ind] @ vec[ind]
+
+    ax1 = plt.subplot(4,2,2*i-1); ax1.plot(ts, y1)
+    ax2 = plt.subplot(4,2,2*i);   ax2.plot(tr, y2)
+
+    ymin = min(y1.min(),y2.min())
+    ymax = max(y1.max(),y2.max())
+    ax1.set_ylim(ymin,ymax)
+    ax2.set_ylim(ymin,ymax)
+
+    ax1.set_title(f"{label} (trial-start aligned)")
+    ax2.set_title(f"{label} (reward-aligned)")
+    ax1.set_xlabel("Time (s)")
+    ax2.set_xlabel("Time (s)")
+    ax1.set_ylabel("Projection")
+    ax2.set_ylabel("Projection")
+
+plt.tight_layout()
 #%%
 import tifffile as tiff
 import numpy as np
@@ -85,12 +110,12 @@ path = folder + r'stack_00001.tif'
 
 # --- Load TIFF ---
 with tiff.TiffFile(path) as tif:
-    data = tif.asarray()
+    datas = tif.asarray()
     try:
         desc = tif.pages[0].tags['ImageDescription'].value
     except Exception:
         desc = ''
-    print(f"Raw TIFF data shape: {data.shape}")
+    print(f"Raw TIFF data shape: {datas.shape}")
     print(desc[:300], '...')
 
 # --- Parse metadata to infer channels/planes if needed ---
@@ -115,20 +140,20 @@ def get_value(text, key):
                 return val
 
 # --- Handle already-shaped data ---
-if data.ndim == 5:
+if datas.ndim == 5:
     # (planes, frames, channels, y, x)
-    n_planes, n_frames, n_channels, height, width = data.shape
-elif data.ndim == 3:
+    n_planes, n_frames, n_channels, height, width = datas.shape
+elif datas.ndim == 3:
     # (frames, y, x)
     n_channels = get_value(desc, 'state.acq.numberOfChannelsSave') or 1
     zs = get_value(desc, 'state.acq.zs')
     n_planes = len(zs) if isinstance(zs, np.ndarray) and zs.size > 0 else 1
-    n_total_frames = data.shape[0]
+    n_total_frames = datas.shape[0]
     frames_per_vol = n_planes * n_channels
     n_volumes = n_total_frames // frames_per_vol
-    height, width = data.shape[1:]
-    data = data.reshape(n_volumes, n_planes, n_channels, height, width)
-    n_planes, n_frames, n_channels = data.shape[1:4]
+    height, width = datas.shape[1:]
+    datas = datas.reshape(n_volumes, n_planes, n_channels, height, width)
+    n_planes, n_frames, n_channels = datas.shape[1:4]
 else:
     raise ValueError(f"Unexpected data shape: {data.shape}")
 
@@ -139,7 +164,7 @@ plane_idx = n_planes // 2
 if n_channels < 2:
     raise ValueError("This TIFF only contains one channel — no channel 2 available.")
 #%%
-avg_frame = np.mean(data[plane_idx, :, 1, :, :], axis=0)
+avg_frame = np.mean(datas[plane_idx, :, 1, :, :], axis=0)
 
 plt.figure(figsize=(6, 6))
 plt.imshow(avg_frame, cmap='gray',
@@ -249,7 +274,7 @@ for i in range(2):
         Y = sta;
         t = ts
     plt.subplot(1,2,i+1)
-    avg_red = np.nanmean(Y[:,brightness > np.percentile(brightness,80)],1);
+    avg_red = np.nanmean(Y[:,brightness > np.percentile(brightness,70)],1);
     avg_not = np.nanmean(Y[:,brightness < np.percentile(brightness,50)],1);
     avg_red = avg_red - np.nanmean(avg_red[0:20])
     avg_not  = avg_not - np.nanmean(avg_not [0:20])
@@ -260,3 +285,5 @@ for i in range(2):
         plt.xlabel('Time from reward (s)')
     else:
         plt.xlabel('Time from trial start (s)')
+#%%
+AMP, stimDist,FAVG = compute_amp_from_photostim('BCI116', data, folder,return_favg= True)
