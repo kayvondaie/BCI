@@ -226,3 +226,37 @@ for i,(vec,label) in enumerate([(pre,"Pre"),(early,"Early"),(late,"Late"),(rew,"
     ax2.set_ylabel("Projection")
 
 plt.tight_layout()
+#%%
+fig, axes = plt.subplots(1, 4, figsize=(12, 3))
+titles = ['Pre', 'Early', 'Late', 'Reward']
+
+for ax, v, title in zip(axes, [pre, early, late, rew], titles):
+    ax.scatter(brightness, v, color='k', s=10)
+    ax.set_title(title)
+    ax.set_xlabel('Brightness')
+    ax.set_ylabel('Value')
+
+plt.tight_layout()
+plt.show()
+
+plt.figure(figsize=(10, 3))
+
+for i in range(2):
+    if i == 0:
+        Y = rta;
+        t = tr
+    else:
+        Y = sta;
+        t = ts
+    plt.subplot(1,2,i+1)
+    avg_red = np.nanmean(Y[:,brightness > np.percentile(brightness,80)],1);
+    avg_not = np.nanmean(Y[:,brightness < np.percentile(brightness,50)],1);
+    avg_red = avg_red - np.nanmean(avg_red[0:20])
+    avg_not  = avg_not - np.nanmean(avg_not [0:20])
+    plt.plot(t,avg_red,'r');
+    plt.plot(t,avg_not,'k')    
+    plt.legend(('Red cells','Not red'))
+    if i == 0:
+        plt.xlabel('Time from reward (s)')
+    else:
+        plt.xlabel('Time from trial start (s)')
