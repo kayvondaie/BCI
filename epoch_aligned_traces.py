@@ -179,7 +179,7 @@ import os
 import matplotlib.pyplot as plt
 
 # --- Load Suite2p ROI definitions ---
-suite2p_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI116/092525/pophys/suite2p_BCI/plane0'
+suite2p_folder = folder + r'suite2p_BCI/plane0'
 stat = np.load(os.path.join(suite2p_folder, 'stat.npy'), allow_pickle=True)
 ops = np.load(os.path.join(suite2p_folder, 'ops.npy'), allow_pickle=True).tolist()
 iscell = np.load(os.path.join(suite2p_folder, 'iscell.npy'), allow_pickle=True)
@@ -286,4 +286,122 @@ for i in range(2):
     else:
         plt.xlabel('Time from trial start (s)')
 #%%
-AMP, stimDist,FAVG = compute_amp_from_photostim('BCI116', data, folder,return_favg= True)
+def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
+    import numpy as np
+    from scipy.signal import medfilt
+
+    AMP = []
+    favg_all = []
+
+    # --- Load ScanImage header to compute µm per pixel ---
+    siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
+    siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+    umPerPix = 1000 / float(siHeader['metadata']['hRoiManager']['scanZoomFactor']) / int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
+
+    # --- Determine number of epochs ---
+    n_epochs = 2 if 'photostim2' in data else 1
+    for epoch_i in range(n_epochs):
+        if epoch_i == 0:
+            stimDist = data['photostim']['stimDist'] * umPerPix
+            favg_raw = data['photostim']['favg_raw']
+        else:
+            stimDist = data['photostim2']['stimDist'] * umPerPix
+            favg_raw = data['photostim2']['favg_raw']
+
+        # --- Normalize ΔF/F traces by baseline (first 8 frames) ---
+        favg = np.zeros_like(favg_raw)
+        baseline = np.nanmean(favg_raw[0:8, :, :], axis=0)
+        favg = (favg_raw - baseline) / baseline
+
+        dt_si = data['dt_si']
+        after = int(np.floor(0.2 / dt_si))
+        before = int(np.floor(0.2 / dt_si))
+        if mouse == "BCI103":
+            after = int(np.floor(0.5 / dt_si))
+
+        # --- Detect stimulation artifact ---
+        artifact = np.nanmean(np.nanmean(favg_raw, axis=2), axis=1)
+        artifact = artifact - np.nanmean(artifact[0:4])
+        artifact = np.where(artifact > 0.5)[0]
+        artifact = artifact[artifact < 40]
+
+        if artifact.size == 0:
+            AMP.append(np.full(favg_raw.shape[1:], np.nan))
+            favg_all.append(favg)
+            continue
+
+        # --- Define pre- and post-stim windows ---
+        pre = (int(artifact[0] - before), int(artifact[0] - 2))
+        post = (int(artifact[-1] + 2), int(artifact[-1] + after))
+
+        # --- Mask artifact region ---
+        favg[artifact, :, :] = np.nan
+
+        # --- Interpolate early NaNs (if any) ---
+        favg[0:30, :, :] = np.apply_along_axis(
+            lambda m: np.interp(
+                np.arange(len(m)),
+                np.where(~np.isnan(m))[0] if np.any(~np.isnan(m)) else [0],
+                m[~np.isnan(m)] if np.any(~np.isnan(m)) else [0]
+            ),
+            axis=0,
+            arr=favg[0:30, :, :]
+        )
+
+        # --- Apply median filter AFTER artifact removal ---
+        favg = np.apply_along_axis(medfilt, 0, favg, kernel_size=5)
+
+        # --- Compute AMP (Δmean_post − Δmean_pre) ---
+        amp = np.nanmean(favg[post[0]:post[1], :, :], axis=0) - np.nanmean(favg[pre[0]:pre[1], :, :], axis=0)
+        AMP.append(amp)
+        favg_all.append(favg)
+
+    if return_favg:
+        return AMP, stimDist, favg_all, artifact
+    else:
+        return AMP, stimDist
+
+
+#%%
+AMP, stimDist,FAVG,artifact = compute_amp_from_photostim('BCI116', data, folder,return_favg= True)
+#%%
+plt.scatter(stimDist.flatten(),AMP[0].flatten())
+#%%
+epoch = 0;
+favg = FAVG[epoch]
+amp = AMP[epoch];
+targs = np.argmin(stimDist,0)
+amp_targ = amp[targs, np.arange(amp.shape[1])]
+plt.plot(brightness[targs],amp_targ,'ko')
+plt.xlabel('Red brightness')
+plt.ylabel('Target response')
+plt.show()
+#%%
+plt.figure(figsize = (10,3))
+b = np.argsort(-amp_targ)
+gi = b[2]
+plt.subplot(141)
+plt.plot(favg[:,targs[gi],gi])
+plt.subplot(142)
+plt.scatter(stimDist[:,gi],amp[:,gi])
+plt.subplot(143)
+plt.scatter(brightness,amp[:,gi])
+plt.subplot(144)
+b = np.argsort(amp[:,gi])
+b = b[b<100]
+ci = 5
+plt.plot(favg[0:30,b[ci],gi])
+
+#%%
+t = np.arange(0,favg.shape[0]*dt_si,dt_si)
+t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
+ind = np.where((stimDist[:,gi]>20)&(amp[:,gi] > .4))[0]
+ind = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<50))[0]
+ind = np.where((amp[:,gi] > .5))[0]
+
+plt.plot(t[0:30],np.nanmedian(favg[0:30,ind,gi],1))
+ind = artifact[np.arange(0,np.where(np.diff(artifact) > 2)[0]+1)]
+
+plt.xlim((-.2,.5))
+plt.show()
+
