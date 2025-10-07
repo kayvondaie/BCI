@@ -377,21 +377,31 @@ plt.xlabel('Red brightness')
 plt.ylabel('Target response')
 plt.show()
 #%%
+t = np.arange(0,favg.shape[0]*dt_si,dt_si)
+t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
 plt.figure(figsize = (10,3))
 b = np.argsort(-amp_targ)
-gi = b[2]
+gi = b[3]
 plt.subplot(141)
-plt.plot(favg[:,targs[gi],gi])
+plt.plot(t[0:30],favg[0:30,targs[gi],gi])
+plt.title('Target')
+plt.xlabel('Time from photostim (s)')
 plt.subplot(142)
 plt.scatter(stimDist[:,gi],amp[:,gi])
+plt.title('Distance from target' + str(gi))
 plt.subplot(143)
 plt.scatter(brightness,amp[:,gi])
+plt.xlabel('Brightness')
+plt.ylabel('Response to target ' + str(gi))
 plt.subplot(144)
-b = np.argsort(amp[:,gi])
+b = np.argsort(-amp[:,gi])
 b = b[b<100]
-ci = 5
-plt.plot(favg[0:30,b[ci],gi])
+ci = 11
 
+plt.plot(t[0:30],favg[0:30,b[ci],gi])
+plt.title('non-target')
+plt.xlabel('Time from photostim (s)')
+plt.tight_layout()
 #%%
 t = np.arange(0,favg.shape[0]*dt_si,dt_si)
 t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
