@@ -324,6 +324,7 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         artifact = artifact - np.nanmean(artifact[0:4])
         artifact = np.where(artifact > 0.5)[0]
         artifact = artifact[artifact < 40]
+        artifact = np.concatenate(([artifact[0] - 1], artifact))
 
         if artifact.size == 0:
             AMP.append(np.full(favg_raw.shape[1:], np.nan))
@@ -381,7 +382,7 @@ t = np.arange(0,favg.shape[0]*dt_si,dt_si)
 t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
 plt.figure(figsize = (10,3))
 b = np.argsort(-amp_targ)
-gi = b[3]
+gi = b[6]
 plt.subplot(141)
 plt.plot(t[0:30],favg[0:30,targs[gi],gi])
 plt.title('Target')
@@ -396,10 +397,11 @@ plt.ylabel('Response to target ' + str(gi))
 plt.subplot(144)
 b = np.argsort(-amp[:,gi])
 b = b[b<100]
-ci = 11
-
-plt.plot(t[0:30],favg[0:30,b[ci],gi])
-plt.title('non-target')
+ci = 30
+ci = b[ci]
+ci = 10
+plt.plot(t[0:30],favg[0:30,ci,gi])
+plt.title('non-target ' + str(ci))
 plt.xlabel('Time from photostim (s)')
 plt.tight_layout()
 #%%
@@ -414,4 +416,236 @@ ind = artifact[np.arange(0,np.where(np.diff(artifact) > 2)[0]+1)]
 
 plt.xlim((-.2,.5))
 plt.show()
+#%%
+#%%
+plt.figure(figsize=(12, 6))
+num_good = 400
 
+# --- Select group and compute SVD ---
+b = np.argsort(-amp_targ)
+gi = b[2]           # target group index
+vi = 1             # which singular vector to show
+
+x = favg[0:25, 0:num_good, gi].copy()
+x[np.isnan(x)] = 0
+if targs[gi] < x.shape[0]:
+    x[:, targs[gi]] = 0
+
+u, s, v = np.linalg.svd(x)
+v = v.T
+
+vp = v[:, vi] * (v[:, vi] > 0)
+vn = -v[:, vi] * (v[:, vi] < 0)
+
+# --- Time vector and helper for photostim mark ---
+t = np.arange(x.shape[0]) * dt_si - 2  # adjust baseline as needed
+
+def ps_time():
+    plt.axvspan(8*dt_si - 2, 13*dt_si - 2, color='magenta', alpha=0.2)
+
+# ========== TOP ROW ==========
+plt.subplot(2, 4, 1)
+plt.plot(t, x @ v[:, vi], '.-')
+ps_time()
+plt.title('Mode time course')
+plt.xlabel('Time (s)')
+plt.ylabel('Projection (a.u.)')
+
+plt.subplot(2, 4, 2)
+plt.plot(t, x @ vp, '.-', color='r')
+ps_time()
+plt.title('Positive mode (co-active cells)')
+plt.xlabel('Time (s)')
+plt.ylabel('Projection (a.u.)')
+
+plt.subplot(2, 4, 3)
+plt.plot(t, x @ vn, '.-', color='b')
+ps_time()
+plt.title('Negative mode (suppressed cells)')
+plt.xlabel('Time (s)')
+plt.ylabel('Projection (a.u.)')
+
+plt.subplot(2, 4, 4)
+#plt.plot(brightness[0:num_good], v[:, vi], 'k.')
+pf.mean_bin_plot(brightness[0:num_good], v[:, vi])
+plt.xlabel('Red-channel brightness')
+plt.ylabel('SVD weight')
+plt.title('Spatial weights vs. opsin expression')
+
+# ========== BOTTOM ROW (target neuron traces) ==========
+# Photostim-aligned
+plt.subplot(2, 4, 5)
+plt.plot(t, favg[0:25, targs[gi], gi], 'k')
+ps_time()
+plt.title(f'Target cell {targs[gi]} photostim response')
+plt.xlabel('Time (s)')
+plt.ylabel('ΔF/F')
+
+# Trial start aligned
+plt.subplot(2, 4, 6)
+plt.plot(ts, sta[:, targs[gi]], 'k')
+plt.axvline(0, color='gray', linestyle='--', alpha=0.6)
+plt.title('Target cell — trial start aligned')
+plt.xlabel('Time from trial start (s)')
+plt.ylabel('ΔF/F')
+
+# Reward aligned
+plt.subplot(2, 4, 7)
+plt.plot(tr, rta[:, targs[gi]], 'k')
+plt.axvline(0, color='gray', linestyle='--', alpha=0.6)
+plt.title('Target cell — reward aligned')
+plt.xlabel('Time from reward (s)')
+plt.ylabel('ΔF/F')
+
+# Info / placeholder panel
+plt.subplot(2,4,8);
+#plt.plot(stimDist[0:num_good,gi],v[:,vi],'k.')
+pf.mean_bin_plot(stimDist[0:num_good,gi],v[:,vi])
+plt.xlabel('Distance from target (um)')
+plt.ylabel('SVD weight')
+
+plt.tight_layout()
+plt.show()
+#%%
+import matplotlib.pyplot as plt
+import numpy as np
+
+# --- configurable parameters ---
+X = 8          # number of example top/bottom cells to show (beyond the first two columns)
+n_frames = 25
+
+# --- sort neurons by SVD weight ---
+b = np.argsort(v[:, vi])
+t = np.arange(n_frames) * dt_si - 2
+
+plt.figure(figsize=(3 * (X + 2), 6))
+
+# ---------------- TOP ROW ----------------
+# (1) target neuron
+plt.subplot(2, X + 2, 1)
+plt.plot(t, favg[0:n_frames, targs[gi], gi], 'k')
+plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.2)
+plt.title('Target neuron')
+plt.xlabel('Time (s)')
+plt.ylabel('ΔF/F')
+
+# (2) SVD projections (same 3 traces from before)
+plt.subplot(2, X + 2, 2)
+
+plt.plot(t, x @ vp, 'r', label='Positive')
+
+plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.2)
+plt.title('SVD projections')
+plt.xlabel('Time (s)')
+plt.legend(frameon=False)
+
+# (3-...) top-weighted example neurons
+for i in range(X):
+    ci = b[-(i + 1)]   # top cells
+    plt.subplot(2, X + 2, 3 + i)
+    plt.plot(t, favg[0:n_frames, ci, gi], 'r')
+    plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.2)
+    plt.title(f'Top {i+1}')
+    plt.xlabel('Time (s)')
+
+# ---------------- BOTTOM ROW ----------------
+# (1) heatmap of all neurons sorted by weight
+plt.subplot(2, X + 2, X + 3)
+plt.imshow(favg[0:n_frames, b, gi].T, aspect='auto', cmap='bwr',
+           vmin=-0.8, vmax=0.8, origin='lower')
+plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.15)
+plt.colorbar(label='ΔF/F', fraction=0.046, pad=0.04)
+plt.title('All cells (sorted)')
+plt.xlabel('Time (s)')
+plt.ylabel('Neuron index (sorted)')
+
+# (2) again show SVD projections for reference
+plt.subplot(2, X + 2, X + 4)
+
+plt.plot(t, x @ vn, 'b')
+plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.2)
+plt.title('SVD projections')
+plt.xlabel('Time (s)')
+
+# (3-...) bottom-weighted example neurons
+for i in range(X):
+    ci = b[i]   # bottom cells
+    plt.subplot(2, X + 2, X + 5 + i)
+    plt.plot(t, favg[0:n_frames, ci, gi], 'b')
+    plt.axvspan(8 * dt_si - 2, 13 * dt_si - 2, color='m', alpha=0.2)
+    plt.title(f'Bottom {i+1}')
+    plt.xlabel('Time (s)')
+
+plt.tight_layout()
+plt.show()
+#%%
+import numpy as np
+from scipy.stats import pearsonr
+
+# average photostim response over the key frames
+amp2 = np.nanmean(favg[9:15, :, :], axis=0)    # shape: (n_cells, n_groups)
+
+n_groups = amp2.shape[1]
+corrs = np.full(n_groups, np.nan)
+
+for gi in range(n_groups):
+    # mask out the target neuron
+    mask = np.ones(amp2.shape[0], dtype=bool)
+    mask[targs[gi]] = False
+    mask[200:] = False;
+
+    # compute correlation between brightness and response (excluding target)
+    valid = np.isfinite(brightness) & np.isfinite(amp2[:, gi]) & mask
+    if np.sum(valid) > 1:
+        corrs[gi], _ = pearsonr(brightness[valid], amp2[valid, gi])
+        pf.mean_bin_plot(brightness[valid], amp2[valid, gi])
+        plt.show()
+
+# 'corrs' now holds correlation coefficient for each target group
+ind = np.where(amp_targ > .2)[0]
+plt.figure(figsize=(4,3))
+plt.hist(corrs[ind], bins=20, color='k', alpha=0.7)
+plt.xlabel('r (brightness vs. ΔF/F amplitude)')
+plt.ylabel('Count')
+plt.title('Brightness-response correlation across targets')
+plt.tight_layout()
+plt.show()
+
+
+
+#%%
+a, t_reward = get_reward_aligned_df(df, reward_vector, dt_si, window=(-2, 6))
+g = np.nanmean(a[90:120,targs[gi],:],0)
+rtr = rt[rt!=30]
+pf.mean_bin_plot(rtr,g,4)
+#%%
+a = 0*df
+for i in range(df.shape[0]):
+    a[i,:] = medfilt(df[i,:],21)
+cc = np.corrcoef(a);
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Sort neuron indices by brightness
+order = np.argsort(brightness)
+
+# Reorder correlation matrix
+cc_sorted = cc[order, :][:, order]
+
+# Plot
+plt.figure(figsize=(6, 5))
+plt.imshow(cc_sorted, cmap='bwr', vmin=-.5, vmax=.5, origin='upper')
+plt.colorbar(label='Correlation coefficient')
+plt.title('Pairwise correlations (sorted by brightness)')
+plt.xlabel('Neuron index (sorted)')
+plt.ylabel('Neuron index (sorted)')
+
+# Optional: mark the boundary between bright and dim neurons (e.g., 80th percentile)
+thr = np.percentile(brightness, 80)
+cut_idx = np.sum(brightness[order] < thr)
+plt.axhline(cut_idx, color='k', linestyle='--', alpha=0.4)
+plt.axvline(cut_idx, color='k', linestyle='--', alpha=0.4)
+
+plt.tight_layout()
+plt.show()
+#%%
