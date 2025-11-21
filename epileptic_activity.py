@@ -8,19 +8,25 @@ Author: Kayvon Daie
 import numpy as np, matplotlib.pyplot as plt, tifffile as tiff, extract_scanimage_metadata, os
 
 #fname = r'//allen/aind/scratch/BCI/2p-raw/BCI98/110724/pophys/spont_00003.tif'
-# fname = r'//allen/aind/scratch/BCI/2p-raw/BCI102/021125/pophys/spontPost_00001.tif'
+#fname = r'//allen/aind/scratch/BCI/2p-raw/BCI102/021125/pophys/spontPre2_00001.tif'
 # fname = r'//allen/aind/scratch/BCI/2p-raw/BCI103/020325/pophys/spont_00003.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI105/012325/pophys/spont_00007.tif'
 # fname = '//allen/aind/scratch/BCI/2p-raw/BCI112/051325/pophys/spont_00014.tif'
+# fname = '//allen/aind/scratch/BCI/2p-raw/BCI112/050225/pophys/spont_00001.tif'
 fname = '//allen/aind/scratch/BCI/2p-raw/BCI98/030625_spont/pophys/spont_00002.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI103/020625/pophys/spont_00001.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI31/052422/pophys/spont_00011.tif'
+# fname = '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif'
+#fname = '//allen/aind/scratch/BCI/2p-raw/808929/spont_00001.tif'
 folder = os.path.dirname(fname)
 base = os.path.basename(fname)
 mouse = folder.split('/')[-3]
 session = folder.split('/')[-2]
 # prefix = 'spont_'
 prefix = base.split('_')[0] + '_'
+
+if fname == '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif':
+    prefix = 'spont_2chn_'
 
 # match only: prefix + 5 digits + '.tif'
 files = sorted([
@@ -38,18 +44,33 @@ for f in files:
     data = tiff.imread(f)
     T = data.shape[0]
     frame_means = data.reshape(T,-1).mean(axis=1)
+    if fname == '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif':
+        frame_means = frame_means[0::2]    
     f0 = np.percentile(frame_means,20)
     dff = (frame_means - f0)/f0
     dff_list.append(dff)
 
 #%%
+plt.figure(figsize=(8,2))
+plt.subplot(121)
+df = [x[7:] for x in dff_list]
+dff  = np.concatenate(df,0)
+t = np.arange(len(dff)) * dt_si
+
+plt.plot(t, dff, lw=1)
+plt.plot(t, dff, 'k',lw=1);
+plt.xlim((50,73));
+plt.ylim((-.1,.5))
+plt.xlabel('time (s)')
+plt.ylabel('ΔF/F')
+plt.title(mouse + ' ' + session)
 # ----------------------------------------------------------
 # 3. Peak detection (positive + negative)
 # ----------------------------------------------------------
 pk_pos, prop_pos = find_peaks(dff, prominence=0, width=0)
 pk_neg, prop_neg = find_peaks(-dff, prominence=0, width=0)
 
-peaks = np.concatenate([pk_pos])
+peaks = np.concatenate([pk_pos,pk_neg])
 prom = np.concatenate([prop_pos['prominences'], prop_neg['prominences']])
 width = np.concatenate([prop_pos['widths'], prop_neg['widths']]) * dt_si
 
@@ -69,29 +90,18 @@ prom_mean = np.mean(prom)
 prom_std  = np.std(prom)
 
 # Epileptiform if prominence is unusually large and width is narrow
-big_idx = (prom > .3) & (width < .4)
+big_idx = (prom > .2) & (width < .4)
 
 print(f"Detected {big_idx.sum()} large epileptiform events")
-plt.figure(figsize=(8,2))
-plt.subplot(121)
-df = [x[7:] for x in dff_list]
-dff  = np.concatenate(df,0)
-t = np.arange(len(dff)) * dt_si
 
-plt.plot(t, dff, lw=1)
-plt.plot(t, dff, 'k',lw=1);
-plt.xlim((0,23));plt.ylim((-.1,.5))
-plt.xlabel('time (s)')
-plt.ylabel('ΔF/F')
-plt.title(mouse + ' ' + session)
 
 
 # ----------------------------------------------------------
 # 6. PLOT: Prominence vs Width (Steinmetz-style)
 # ----------------------------------------------------------
 plt.subplot(143)
-plt.scatter(width, prom, s=10, color='gray', alpha=0.3, label='Background')
-plt.scatter(width[big_idx], prom[big_idx], s=25, color='red', label='Epileptiform')
+plt.plot(width, prom, '.',ms=1, color='b',  label='Background')
+plt.plot(width[big_idx], prom[big_idx], '.', ms=1, color='k', label='Epileptiform')
 plt.xlabel('Width (s)')
 plt.ylabel('Prominence (ΔF/F)')
 plt.tight_layout()
