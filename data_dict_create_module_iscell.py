@@ -74,7 +74,7 @@ def main(folder, index=None):
             post = round(10 / 0.05)
             pre = round(2 / 0.05)
 
-        data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
+#        data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
         data['iscell'] = iscell
 
         data['F'], data['Fraw'], data['df_closedloop'], data['centroidX'], data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
@@ -1100,6 +1100,7 @@ def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
         a = F[:, ind].T
         g = F[:, ind].T
         bl = np.tile(np.mean(a[0:pre, :], axis=0), (a.shape[0], 1))
+        bl[bl==0] = np.nan
         a = (a - bl) / bl
         if a.shape[0] > Fstim.shape[0]:
             a = a[0:Fstim.shape[0], :]

@@ -24,7 +24,8 @@ import copy
 import shutil
 from collections import Counter
 
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI111/072825/pophys/']
+#folder = [r'//allen/aind/scratch/BCI/2p-raw/820615/']
+folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI116/101625/pophys/']
 #old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
@@ -42,8 +43,8 @@ if 'old_folder' in locals():
         iscell_old = np.load(old_folder +r'suite2p_spont/' + r'/plane0/iscell.npy',allow_pickle = 'True')    
 
 savefolders = dict()
-savefolders[0] = 'BCI';
-savefolders[1] = 'spont_pre';
+savefolders[0] = 'photostim';
+savefolders[1] = 'photostim';
 savefolders[2] = 'spont_post';
 savefolders[3] = 'spont_pre';
 savefolders[4] = 'spont_post';
@@ -147,7 +148,9 @@ for ei in range(0,len(ind)):
     ops['delete_bin'] = False
     ops['keep_movie_raw'] = 0
     ops['fs'] = 20
-    ops['nchannels'] = 1
+    file = folder + ops['tiff_list'][0]                
+    siHeader = extract_scanimage_metadata.extract_scanimage_metadata(file)
+    ops['nchannels'] = len(np.fromstring(siHeader['metadata']['hChannels']['channelSave'].strip('[]'), sep=' ', dtype=int))
     ops['tau'] = 1
     ops['nimg_init'] = 500
     ops['nonrigid'] = False

@@ -1,6 +1,9 @@
 import bci_time_series as bts
 from BCI_data_helpers import *
+import data_dict_create_module_iscell as ddc
 folder = '//allen/aind/scratch/BCI/2p-raw/BCI116/092525/pophys/';
+#folder = '//allen/aind/scratch/BCI/2p-raw/BCI116/101125/pophys/';
+#folder = '//allen/aind/scratch/BCI/2p-raw/BCI116/101625/pophys/';
 data = ddc.main(folder)
 #%%
 dt_si = data['dt_si']
@@ -49,57 +52,96 @@ rta = np.nanmean(rta,2)
 sta = np.nanmean(sta,2)
 #%%
 
+import numpy as np
+import matplotlib.pyplot as plt
 
-ind = np.where((tr>2) & (tr<3))[0]
-aft = np.nanmean(rta[ind,:],0)
+# Epoch colors
+epoch_colors = {
+    "Pre": "#33b983",    # teal
+    "Early": "#1077f3",  # blue
+    "Late": "#0050ae",   # dark blue
+    "Rew": "#bf8cfc"     # lavender
+}
 
-ind = np.where((ts<-1))[0]
-pre = np.nanmean(sta[ind,:],0)
-ind = np.where((ts>0) & (ts<.2))[0]
-early = np.nanmean(sta[ind,:],0)
-ind = np.where((tr<-1) & (tr>-2))[0]
-late = np.nanmean(rta[ind,:],0)
-ind = np.where((tr>1) & (tr<2))[0]
-rew = np.nanmean(rta[ind,:],0)
+# --- Compute mean vectors ---
+ind = np.where((tr > 2) & (tr < 3))[0]
+aft = np.nanmean(rta[ind, :], 0)
 
+ind = np.where((ts < -1))[0]
+pre = np.nanmean(sta[ind, :], 0)
+ind = np.where((ts > 0) & (ts < .2))[0]
+early = np.nanmean(sta[ind, :], 0)
+ind = np.where((tr < 0) & (tr > -2))[0]
+late = np.nanmean(rta[ind, :], 0)
+ind = np.where((tr > 1) & (tr < 2))[0]
+rew = np.nanmean(rta[ind, :], 0)
+
+# Subtract baselines
 rew2 = rew - late
 early2 = early - pre
 late2 = late - pre
 pre2 = pre - rew
 
-pre = pre2;late = late2;early = early2;rew = rew2;
+pre = pre2; late = late2; early = early2; rew = rew2
 
-# pre = pre - aft
-# rew = rew - aft
-# early = early - aft
-# late = late - aft
-
+# Restrict to valid cells
 ind = np.where((pre < 11))[0]
-plt.figure(figsize=(6,8))
 
-for i,(vec,label) in enumerate([(pre,"Pre"),(early,"Early"),(late,"Late"),(rew,"Rew")],1):
+# --- Plot ---
+plt.figure(figsize=(6, 8))
+epochs = [("Pre", pre), ("Early", early), ("Late", late), ("Rew", rew)]
+
+for i, (label, vec) in enumerate(epochs, 1):
     ts = np.arange(sta.shape[0]) * dt_si - 2
     tr = np.arange(rta.shape[0]) * dt_si - 2
 
-    y1 = sta[:,ind] @ vec[ind]
-    y2 = rta[:,ind] @ vec[ind]
+    y1 = sta[:, ind] @ vec[ind]
+    y2 = rta[:, ind] @ vec[ind]
+    color = epoch_colors[label]
 
-    ax1 = plt.subplot(4,2,2*i-1); ax1.plot(ts, y1)
-    ax2 = plt.subplot(4,2,2*i);   ax2.plot(tr, y2)
+    ax1 = plt.subplot(4, 2, 2 * i - 1)
+    ax2 = plt.subplot(4, 2, 2 * i)
 
-    ymin = min(y1.min(),y2.min())
-    ymax = max(y1.max(),y2.max())
-    ax1.set_ylim(ymin,ymax)
-    ax2.set_ylim(ymin,ymax)
+    # Plot traces
+    ax1.plot(ts, y1, color=color, linewidth=2)
+    ax2.plot(tr, y2, color=color, linewidth=2)
 
-    ax1.set_title(f"{label} (trial-start aligned)")
-    ax2.set_title(f"{label} (reward-aligned)")
-    ax1.set_xlabel("Time (s)")
-    ax2.set_xlabel("Time (s)")
-    ax1.set_ylabel("Projection")
-    ax2.set_ylabel("Projection")
+    # Shared y-limits
+    ymin = min(y1.min(), y2.min())
+    ymax = max(y1.max(), y2.max())
+    ax1.set_ylim(ymin, ymax)
+    ax2.set_ylim(ymin, ymax)
+
+    # Remove axis frames & ticks
+    for ax in [ax1, ax2]:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    # Titles
+    ax1.set_title(f"{label} (trial-start aligned)", fontsize=10, color=color)
+    ax2.set_title(f"{label} (reward-aligned)", fontsize=10, color=color)
+
+    # --- Add scale bars (0.5 s horizontally, 0.2 arbitrary units vertically) ---
+    xscale = 0.5
+    yscale = 0.2 * (ymax - ymin)
+    x0 = ts.min() + 0.2
+    y0 = ymin + 0.05 * (ymax - ymin)
+    for ax in [ax1, ax2]:
+        ax.plot([x0, x0 + xscale], [y0, y0], color='k', lw=2)
+        ax.plot([x0, x0], [y0, y0 + yscale], color='k', lw=2)
+        ax.plot([0,0],ax.get_ylim(),':',color = (.5,.5,.5))
+        ax.text(x0 + xscale / 2, y0 - 0.03 * (ymax - ymin), f"{xscale:.1f}s",
+                ha='center', va='top', fontsize=8)
+        ax.text(x0 - 0.05, y0 + yscale / 2, f"{yscale:.2f}",
+                ha='right', va='center', fontsize=8)
 
 plt.tight_layout()
+plt.show()
+
 #%%
 import tifffile as tiff
 import numpy as np
@@ -164,14 +206,17 @@ plane_idx = n_planes // 2
 if n_channels < 2:
     raise ValueError("This TIFF only contains one channel — no channel 2 available.")
 #%%
-avg_frame = np.mean(datas[plane_idx, :, 1, :, :], axis=0)
-
-plt.figure(figsize=(6, 6))
-plt.imshow(avg_frame, cmap='gray',
-           vmin=np.percentile(avg_frame, 1),
-           vmax=np.percentile(avg_frame, 99.7))
-plt.title(f"Average frame — plane {plane_idx+1}/{n_planes}, channel 2")
-plt.axis('off')
+plt.figure(figsize=(12, 6))
+names = ['Green channel','Red channel']
+for i in range(2):
+    avg_frame = np.mean(datas[plane_idx, :, i, :, :], axis=0)
+    plt.subplot(1,2,i+1)
+    
+    plt.imshow(avg_frame, cmap='gray',
+               vmin=np.percentile(avg_frame, 1),
+               vmax=np.percentile(avg_frame, 99.7))
+    plt.title(names[i])
+    plt.axis('off')
 plt.show()
 #%%
 import numpy as np
@@ -257,9 +302,11 @@ titles = ['Pre', 'Early', 'Late', 'Reward']
 
 for ax, v, title in zip(axes, [pre, early, late, rew], titles):
     ax.scatter(brightness, v, color='k', s=10)
-    ax.set_title(title)
-    ax.set_xlabel('Brightness')
-    ax.set_ylabel('Value')
+    plt.sca(ax)
+    #pf.mean_bin_plot(brightness, v)
+    #ax.set_title(title)
+    ax.set_xlabel('Red fluorescence')
+    ax.set_ylabel(title + r' (DF/F)')
 
 plt.tight_layout()
 plt.show()
@@ -274,8 +321,8 @@ for i in range(2):
         Y = sta;
         t = ts
     plt.subplot(1,2,i+1)
-    avg_red = np.nanmean(Y[:,brightness > np.percentile(brightness,70)],1);
-    avg_not = np.nanmean(Y[:,brightness < np.percentile(brightness,50)],1);
+    avg_red = np.nanmean(Y[:,brightness > np.percentile(brightness,80)],1);
+    avg_not = np.nanmean(Y[:,brightness < np.percentile(brightness,20)],1);
     avg_red = avg_red - np.nanmean(avg_red[0:20])
     avg_not  = avg_not - np.nanmean(avg_not [0:20])
     plt.plot(t,avg_red,'r');
@@ -286,13 +333,41 @@ for i in range(2):
     else:
         plt.xlabel('Time from trial start (s)')
 #%%
+from scipy.signal import medfilt
+
+def medfilt_real_data(favg, artifact, kernel_size=5):
+    """Apply median filter only to real (non-artifact) frames."""
+    favg_filt = np.copy(favg)
+    T = favg.shape[0]
+    artifact_mask = np.zeros(T, dtype=bool)
+    artifact_mask[artifact] = True
+
+    # Indices of real frames
+    real_idx = np.where(~artifact_mask)[0]
+
+    # Apply median filter only to real frames, one ROI at a time
+    for c in range(favg.shape[1]):  # cell
+        for g in range(favg.shape[2]):  # stim group
+            trace = favg[:, c, g]
+            real_trace = trace[real_idx]
+
+            if np.sum(~np.isnan(real_trace)) > kernel_size:
+                # Apply medfilt to the valid subset
+                smoothed = medfilt(real_trace, kernel_size=kernel_size)
+                favg_filt[real_idx, c, g] = smoothed
+
+            # keep artifact frames as NaN
+            favg_filt[artifact_mask, c, g] = np.nan
+
+    return favg_filt
+
 def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
     import numpy as np
     from scipy.signal import medfilt
 
     AMP = []
     favg_all = []
-
+    favg_filt_all = []
     # --- Load ScanImage header to compute µm per pixel ---
     siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
     siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
@@ -310,7 +385,7 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
 
         # --- Normalize ΔF/F traces by baseline (first 8 frames) ---
         favg = np.zeros_like(favg_raw)
-        baseline = np.nanmean(favg_raw[0:8, :, :], axis=0)
+        baseline = np.nanmean(favg_raw[0:7, :, :], axis=0)
         favg = (favg_raw - baseline) / baseline
 
         dt_si = data['dt_si']
@@ -323,8 +398,9 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         artifact = np.nanmean(np.nanmean(favg_raw, axis=2), axis=1)
         artifact = artifact - np.nanmean(artifact[0:4])
         artifact = np.where(artifact > 0.5)[0]
-        artifact = artifact[artifact < 40]
-        artifact = np.concatenate(([artifact[0] - 1], artifact))
+        artifact = artifact[artifact < 25]
+        #artifact = np.concatenate(([artifact[0] - 1], artifact,[artifact[-1]+1]))
+        #artifact = np.concatenate(([artifact[0] - 2,artifact[0] - 1], artifact,[artifact[-1]+1,artifact[-1]+2,artifact[-1]+3]))
 
         if artifact.size == 0:
             AMP.append(np.full(favg_raw.shape[1:], np.nan))
@@ -350,26 +426,31 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         )
 
         # --- Apply median filter AFTER artifact removal ---
+        favg_filt = np.apply_along_axis(medfilt, 0, favg, kernel_size=5)
         favg = np.apply_along_axis(medfilt, 0, favg, kernel_size=5)
+        
+        #favg = medfilt_real_data(favg, artifact, kernel_size=5)
+
 
         # --- Compute AMP (Δmean_post − Δmean_pre) ---
         amp = np.nanmean(favg[post[0]:post[1], :, :], axis=0) - np.nanmean(favg[pre[0]:pre[1], :, :], axis=0)
         AMP.append(amp)
         favg_all.append(favg)
+        favg_filt_all.append(favg_filt)
 
     if return_favg:
-        return AMP, stimDist, favg_all, artifact
+        return AMP, stimDist, favg_all, artifact, favg_filt_all
     else:
         return AMP, stimDist
 
 
 #%%
-AMP, stimDist,FAVG,artifact = compute_amp_from_photostim('BCI116', data, folder,return_favg= True)
-#%%
+AMP, stimDist,FAVG,artifact,favg_filt = compute_amp_from_photostim('BCI116', data, folder,return_favg= True)
 plt.scatter(stimDist.flatten(),AMP[0].flatten())
 #%%
 epoch = 0;
 favg = FAVG[epoch]
+favg2 = favg_filt[epoch]
 amp = AMP[epoch];
 targs = np.argmin(stimDist,0)
 amp_targ = amp[targs, np.arange(amp.shape[1])]
@@ -379,7 +460,6 @@ plt.ylabel('Target response')
 plt.show()
 #%%
 t = np.arange(0,favg.shape[0]*dt_si,dt_si)
-t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
 plt.figure(figsize = (10,3))
 b = np.argsort(-amp_targ)
 gi = b[6]
@@ -399,31 +479,18 @@ b = np.argsort(-amp[:,gi])
 b = b[b<100]
 ci = 30
 ci = b[ci]
-ci = 10
+ci = 8
 plt.plot(t[0:30],favg[0:30,ci,gi])
 plt.title('non-target ' + str(ci))
 plt.xlabel('Time from photostim (s)')
 plt.tight_layout()
-#%%
-t = np.arange(0,favg.shape[0]*dt_si,dt_si)
-t = t - t[artifact[np.where(np.diff(artifact) > 2)[0][0]]]
-ind = np.where((stimDist[:,gi]>20)&(amp[:,gi] > .4))[0]
-ind = np.where((stimDist[:,gi]>30)&(stimDist[:,gi]<50))[0]
-ind = np.where((amp[:,gi] > .5))[0]
-
-plt.plot(t[0:30],np.nanmedian(favg[0:30,ind,gi],1))
-ind = artifact[np.arange(0,np.where(np.diff(artifact) > 2)[0]+1)]
-
-plt.xlim((-.2,.5))
-plt.show()
-#%%
 #%%
 plt.figure(figsize=(12, 6))
 num_good = 400
 
 # --- Select group and compute SVD ---
 b = np.argsort(-amp_targ)
-gi = b[2]           # target group index
+gi = b[6]           # target group index
 vi = 1             # which singular vector to show
 
 x = favg[0:25, 0:num_good, gi].copy()
@@ -436,6 +503,11 @@ v = v.T
 
 vp = v[:, vi] * (v[:, vi] > 0)
 vn = -v[:, vi] * (v[:, vi] < 0)
+
+x = favg[0:25, 0:num_good, gi].copy()
+x[np.isnan(x)] = 0
+if targs[gi] < x.shape[0]:
+    x[:, targs[gi]] = 0
 
 # --- Time vector and helper for photostim mark ---
 t = np.arange(x.shape[0]) * dt_si - 2  # adjust baseline as needed
@@ -475,7 +547,7 @@ plt.title('Spatial weights vs. opsin expression')
 # ========== BOTTOM ROW (target neuron traces) ==========
 # Photostim-aligned
 plt.subplot(2, 4, 5)
-plt.plot(t, favg[0:25, targs[gi], gi], 'k')
+plt.plot(t, favg[0:25, targs[gi], gi], 'k.-')
 ps_time()
 plt.title(f'Target cell {targs[gi]} photostim response')
 plt.xlabel('Time (s)')
@@ -506,6 +578,8 @@ plt.ylabel('SVD weight')
 
 plt.tight_layout()
 plt.show()
+amp2 = np.nanmean(favg[7:11, :, :], axis=0)    # shape: (n_cells, n_groups)
+rebound = np.nanmean(favg[15:22, :, :], axis=0) - np.nanmean(favg[7:11, :, :], axis=0)
 #%%
 import matplotlib.pyplot as plt
 import numpy as np
@@ -583,7 +657,8 @@ import numpy as np
 from scipy.stats import pearsonr
 
 # average photostim response over the key frames
-amp2 = np.nanmean(favg[9:15, :, :], axis=0)    # shape: (n_cells, n_groups)
+amp2 = np.nanmean(favg[7:11, :, :], axis=0)    # shape: (n_cells, n_groups)
+rebound = np.nanmean(favg[15:22, :, :], axis=0) - np.nanmean(favg[7:11, :, :], axis=0)
 
 n_groups = amp2.shape[1]
 corrs = np.full(n_groups, np.nan)
@@ -598,7 +673,7 @@ for gi in range(n_groups):
     valid = np.isfinite(brightness) & np.isfinite(amp2[:, gi]) & mask
     if np.sum(valid) > 1:
         corrs[gi], _ = pearsonr(brightness[valid], amp2[valid, gi])
-        pf.mean_bin_plot(brightness[valid], amp2[valid, gi])
+        pf.mean_bin_plot(brightness[valid], rebound[valid, gi])
         plt.show()
 
 # 'corrs' now holds correlation coefficient for each target group
