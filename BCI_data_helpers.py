@@ -146,7 +146,7 @@ def compute_rpe_standard(rt, baseline=3.0, window=10, fill_value=np.nan):
         rpe[i] = avg - rt_clean[i]
     return rpe
 
-def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
+def compute_amp_from_photostim(mouse, data, folder):
     """
     Compute AMP values (average ΔF/F in response to photostim) for each epoch.
 
@@ -158,8 +158,6 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         Dictionary containing photostim data, e.g. favg_raw, dt_si.
     folder : str
         Full path to suite2p folder containing siHeader.npy.
-    return_favg : bool, optional
-        If True, also return the normalized ΔF/F traces (favg). Default is False.
 
     Returns
     -------
@@ -167,17 +165,19 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         List of AMP values for each epoch.
     stimDist : np.ndarray
         Distance from stim site for each cell (in microns).
-    favg_all : list of np.ndarray, optional
-        List of normalized ΔF/F traces for each epoch (only if return_favg=True).
     """
     AMP = []
-    favg_all = []
 
     # Load scan parameters to compute microns per pixel
-    siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
-    siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+    try:
+        siHeader_path = folder + r'/suite2p_BCI/plane0/siHeader.npy'
+        siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+        dt_si = data['dt_si']
+    except:
+        siHeader_path = folder + r'/suite2p_photostim_single/plane0/siHeader.npy'
+        siHeader = np.load(siHeader_path, allow_pickle=True).tolist()
+        dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
     umPerPix = 1000 / float(siHeader['metadata']['hRoiManager']['scanZoomFactor']) / int(siHeader['metadata']['hRoiManager']['pixelsPerLine'])
-
     n_epochs = 2 if 'photostim2' in data else 1
     for epoch_i in range(n_epochs):
         if epoch_i == 0:
@@ -192,8 +192,8 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         for i in range(favg.shape[1]):
             baseline = np.nanmean(favg_raw[0:3, i])
             favg[:, i] = (favg_raw[:, i] - baseline) / baseline
-
-        dt_si = data['dt_si']
+            
+        #dt_si = data['dt_si']
         after = int(np.floor(0.2 / dt_si))
         before = int(np.floor(0.2 / dt_si))
         if mouse == "BCI103":
@@ -207,7 +207,6 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
 
         if artifact.size == 0:
             AMP.append(np.full(favg_raw.shape[1:], np.nan))
-            favg_all.append(favg)
             continue
 
         # Define pre- and post-stim windows
@@ -231,13 +230,8 @@ def compute_amp_from_photostim(mouse, data, folder, return_favg=False):
         # Compute AMP as Δ(mean_post - mean_pre)
         amp = np.nanmean(favg[post[0]:post[1], :, :], axis=0) - np.nanmean(favg[pre[0]:pre[1], :, :], axis=0)
         AMP.append(amp)
-        favg_all.append(favg)
 
-    if return_favg:
-        return AMP, stimDist, favg_all, artifact
-    else:
-        return AMP, stimDist
-
+    return AMP, stimDist
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -318,53 +312,3 @@ def compute_trial_mismatch_score(
         target_similarity_trial_raw[i] = np.nanmean(neural_target_similarity_raw[start:end])
     
     return trial_mismatch_score, smooth_step_trial, target_similarity_trial, target_similarity_trial_raw
-
-
-import numpy as np
-
-def reward_triggered_activity(df, reward_times, dt_si, window=(-2, 2)):
-    """
-    Extract reward-triggered activity for all neurons.
-    
-    Parameters
-    ----------
-    df : ndarray
-        Neural activity array of shape (n_neurons, n_timepoints).
-    reward_times : array-like
-        Reward times in units of seconds (NaN if no reward).
-    dt_si : float
-        Sampling interval in seconds.
-    window : tuple of floats
-        (start, end) time around reward in seconds, relative to reward.
-        Default = (-2, 2) → 2 seconds before to 2 seconds after reward.
-    
-    Returns
-    -------
-    rta : ndarray
-        Reward-triggered activity of shape (time, neuron, trial).
-    tsta : ndarray
-        Time axis in seconds, relative to reward.
-    """
-    n_neurons, n_timepoints = df.shape
-    reward_times = np.asarray(reward_times)
-    n_trials = len(reward_times)
-
-    # build time axis relative to reward
-    tsta = np.arange(window[0], window[1], dt_si)
-    n_time = len(tsta)
-
-    # initialize output
-    rta = np.full((n_time, n_neurons, n_trials), np.nan, dtype=float)
-
-    for tr, rt in enumerate(reward_times):
-        if np.isnan(rt):
-            continue
-        # center index for reward
-        center = int(np.round(rt / dt_si))
-        idx = center + (tsta / dt_si).astype(int)
-
-        valid_mask = (idx >= 0) & (idx < n_timepoints)
-        if np.any(valid_mask):
-            rta[valid_mask, :, tr] = df[:, idx[valid_mask]].T
-
-    return rta, tsta
