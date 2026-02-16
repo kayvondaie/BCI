@@ -25,8 +25,8 @@ import shutil
 from collections import Counter
 
 #folder = [r'//allen/aind/scratch/BCI/2p-raw/820615/']
-folder = [r'//allen/aind/scratch/BCI/2p-raw/BCI116/101625/pophys/']
-#old_folder = r'//allen/aind/scratch/BCI/2p-raw/BCI115/062525/pophys/'
+folder = [r'//allen/aind/scratch/BCI/2p-raw/CK003/121125/pophys/']
+#old_folder = r'//allen/aind/scratch/BCI/2p-raw/CK003/121125/pophys/'
 #folder = [r'\\allen\aind\scratch\david.feng\BCI_43_032423/']
 #old_folder = r'C:/Users/Kayvon Daie/Documents/BCI_data/BCI58/082923/'
 #folder = [r'D:/KD/BCI_data/BCI_2022/BCI54/072423/']
@@ -43,8 +43,8 @@ if 'old_folder' in locals():
         iscell_old = np.load(old_folder +r'suite2p_spont/' + r'/plane0/iscell.npy',allow_pickle = 'True')    
 
 savefolders = dict()
-savefolders[0] = 'photostim';
-savefolders[1] = 'photostim';
+savefolders[0] = 'BCI';
+savefolders[1] = 'spont';
 savefolders[2] = 'spont_post';
 savefolders[3] = 'spont_pre';
 savefolders[4] = 'spont_post';
@@ -72,30 +72,7 @@ for index, base in enumerate(bases):
 ind = input('pick indices of bases for BCI, photostim, spont, photostim2 in that order')
 ind = [int(x) for x in ind[1:-1].split(',')]
 
-# # Initialize the savefolders dictionary
-# savefolders = {}
 
-# for i, index in enumerate(ind):
-#     base_name = bases[index]
-    
-#     # Determine save folder based on keywords
-#     if 'neuron' in base_name.lower():
-#         savefolders[i] = "BCI"
-#     elif 'spont' in base_name.lower():
-#         savefolders[i] = "spont"
-#     elif 'photostim' in base_name.lower():
-#         savefolders[i] = "photostim_single"
-#     else:
-#         savefolders[i] = "unknown"  # Default if no keyword matches
-
-# # Reorganize savefolders and ind to put "BCI" first
-# if "BCI" in savefolders.values():
-#     bci_index = next(key for key, value in savefolders.items() if value == "BCI")
-#     # Move the "BCI" index to the front
-#     ind = [ind[bci_index]] + [v for i, v in enumerate(ind) if i != bci_index]
-#     #savefolders = {0: savefolders[bci_index]} | {i + 1: savefolders[k] for i, k in enumerate(savefolders) if k != bci_index}
-
-# Print the save folder assignments
 print("Reorganized savefolders:")
 print(savefolders)
 print("Reorganized ind:")

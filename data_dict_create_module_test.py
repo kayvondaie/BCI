@@ -588,56 +588,59 @@ def create_zaber_info(folder,base,ops,dt_si):
 
 def load_data_dict(folder, subset=None):
     """
-    Load a data dictionary from a .npy file, supporting both old and new formats.
-    
-    Parameters:
-        folder (str): Path to the folder containing the data file.
-        subset (str, optional): Specify 'photostim' to load only data['photostim'], 
-                                or 'no_photostim' to load all fields except data['photostim'].
-    
-    Returns:
-        dict or subset of dict: The loaded data dictionary (or a subset of it).
+    Load a data dictionary from .npy files, supporting both old and new formats.
+    Allows sessions that only have BCI (no photostim) or only photostim (no main).
     """
-    import re
-    import pickle
+    import os
     import numpy as np
-    
-    data = np.load(folder + 'data_main.npy',allow_pickle=True)
-    data['photostim'] = np.load(folder + 'data_photostim.npy',allow_pickle=True)
-    data['photostim2'] = np.load(folder + 'data_photostim2.npy',allow_pickle=True)
-    
-    # # Extract session and mouse from folder path
-    # slash_indices = [match.start() for match in re.finditer('/', folder)]
-    # session = folder[slash_indices[-2]+1:slash_indices[-1]]
-    # mouse = folder[slash_indices[-3]+1:slash_indices[-2]]
-    
-    # # Construct file path
-    # file_path = folder + f"data_{mouse}_{session}.npy"
-    
-    # # Try to load using pickle (new format)
-    # try:
-    #     with open(file_path, 'rb') as f:
-    #         data = pickle.load(f)
-    #     print("Loaded using pickle (new format).")
-    # except Exception as e:
-    #     print(f"Failed to load with pickle: {e}")
-    #     # Fall back to NumPy load (old format)
-    #     try:
-    #         data = np.load(file_path, allow_pickle=True).tolist()
-    #         print("Loaded using np.load (old format).")
-    #     except Exception as e2:
-    #         raise ValueError(f"Failed to load file with both methods: {e2}")
-    
-    # # Handle subsets if requested
-    # if subset == 'photostim':
-    #     if 'photostim' in data:
-    #         return data['photostim']
-    #     else:
-    #         raise KeyError("Key 'photostim' not found in data.")
-    # elif subset == 'no_photostim':
-    #     return {k: v for k, v in data.items() if k != 'photostim'}
-    
+
+    # normalize path
+    folder = folder.replace("\\", "/")
+    if not folder.endswith("/"):
+        folder += "/"
+
+    parts = folder.strip("/").split("/")
+    mouse = parts[-3]
+    session = parts[-2]
+
+    # candidate filenames (new first, then old)
+    main_file = folder + "data_main.npy"
+    ps1_file  = folder + "data_photostim.npy"
+    ps2_file  = folder + "data_photostim2.npy"
+
+    if not os.path.exists(main_file):
+        main_file = folder + f"data_main_{mouse}_{session}_BCI.npy"
+    if not os.path.exists(ps1_file):
+        ps1_file = folder + f"data_photostim{mouse}_{session}.npy"
+    if not os.path.exists(ps2_file):
+        ps2_file = folder + f"data_photostim2{mouse}_{session}.npy"
+
+    def load_npy(fname):
+        x = np.load(fname, allow_pickle=True)
+        return x if isinstance(x, dict) else x.item()
+
+    data = {}
+
+    # main (BCI) is optional
+    if os.path.exists(main_file):
+        data = load_npy(main_file)
+    else:
+        data = {}
+
+    # photostim is optional
+    if os.path.exists(ps1_file):
+        data["photostim"] = load_npy(ps1_file)
+    if os.path.exists(ps2_file):
+        data["photostim2"] = load_npy(ps2_file)
+
+    # subset handling
+    if subset == "photostim":
+        return data.get("photostim", {})
+    elif subset == "no_photostim":
+        return {k: v for k, v in data.items() if k != "photostim"}
+
     return data
+
 
 
 
@@ -919,24 +922,64 @@ def save_dict_to_hdf5(data_dict, hdf5_file_path):
 
 
 
+# def load_hdf5(folder,bci_keys,photostim_keys):
+#     import os
+#     import h5py
+#     import numpy as np
+
+# #    photostim_keys = ['stimDist', 'favg_raw']
+# #    bci_keys = ['df_closedloop','F','mouse','session']
+#     data = dict()
+#     data['photostim'] = dict()
+#     data['photostim2'] = dict()
+#     for i in range(len(photostim_keys)):
+#         with h5py.File(os.path.join(folder, "data_photostim.h5"), "r") as f:
+#             data['photostim'][photostim_keys[i]] = f[photostim_keys[i]][:]
+#         with h5py.File(os.path.join(folder, "data_photostim2.h5"), "r") as f:
+#             data['photostim2'][photostim_keys[i]] = f[photostim_keys[i]][:]           
+
+#     for i in range(len(bci_keys)):
+#         with h5py.File(os.path.join(folder, "data_main.h5"), "r") as f:
+#             try:
+#                 data[bci_keys[i]] = f[bci_keys[i]][:]
+#             except:
+#                 data[bci_keys[i]] = f[bci_keys[i]][()]
+#                 if isinstance(data[bci_keys[i]], bytes):
+#                     data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
+#     return data
+
 def load_hdf5(folder,bci_keys,photostim_keys):
     import os
     import h5py
     import numpy as np
 
-#    photostim_keys = ['stimDist', 'favg_raw']
-#    bci_keys = ['df_closedloop','F','mouse','session']
+    parts = folder.replace("\\", "/").strip("/").split("/")
+    mouse = parts[-3]
+    session = parts[-2]
+
+    main_file = os.path.join(folder, "data_main.h5")
+    ps1_file  = os.path.join(folder, "data_photostim.h5")
+    ps2_file  = os.path.join(folder, "data_photostim2.h5")
+
+    if not os.path.exists(main_file):
+        main_file = os.path.join(folder, f"data_main_{mouse}_{session}_BCI.h5")
+    if not os.path.exists(ps1_file):
+        ps1_file = os.path.join(folder, f"data_photostim{mouse}_{session}.h5")
+    if not os.path.exists(ps2_file):
+        ps2_file = os.path.join(folder, f"data_photostim2{mouse}_{session}.h5")
+
     data = dict()
     data['photostim'] = dict()
     data['photostim2'] = dict()
+
     for i in range(len(photostim_keys)):
-        with h5py.File(os.path.join(folder, "data_photostim.h5"), "r") as f:
+        with h5py.File(ps1_file, "r") as f:
             data['photostim'][photostim_keys[i]] = f[photostim_keys[i]][:]
-        with h5py.File(os.path.join(folder, "data_photostim2.h5"), "r") as f:
+        with h5py.File(ps2_file, "r") as f:
             data['photostim2'][photostim_keys[i]] = f[photostim_keys[i]][:]           
 
     for i in range(len(bci_keys)):
-        with h5py.File(os.path.join(folder, "data_main.h5"), "r") as f:
+        with h5py.File(main_file, "r") as f:
             try:
                 data[bci_keys[i]] = f[bci_keys[i]][:]
             except:
@@ -944,6 +987,8 @@ def load_hdf5(folder,bci_keys,photostim_keys):
                 if isinstance(data[bci_keys[i]], bytes):
                     data[bci_keys[i]] = data[bci_keys[i]].decode('utf-8')
     return data
+
+
 
 def seq_offset(data, epoch):
     stimDist = data[epoch]['stimDist']

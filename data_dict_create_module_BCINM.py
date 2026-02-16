@@ -13,7 +13,7 @@ import pandas as pd
 import glob
 import pickle
 
-keep_suite2p_cells = 1;
+
 def main(folder, index=None):
     """
     Main function to process data. Handles optional index for specific photostim subfolder.
@@ -43,14 +43,9 @@ def main(folder, index=None):
         iscell = np.load(os.path.join(bci_folder, 'iscell.npy'), allow_pickle=True)
         stat = np.load(os.path.join(bci_folder, 'stat.npy'), allow_pickle=True)
         Ftrace = np.load(os.path.join(bci_folder, 'F.npy'), allow_pickle=True)
-        if keep_suite2p_cells == 1:
-            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-        else:
-            cells = np.arange(iscell.shape[0])   # 0..N-1
-        
+        cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
         Ftrace = Ftrace[cells, :]
-        stat   = stat[cells]
-
+        stat = stat[cells]
         ops = np.load(os.path.join(bci_folder, 'ops.npy'), allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
         
@@ -74,7 +69,7 @@ def main(folder, index=None):
             post = round(10 / 0.05)
             pre = round(2 / 0.05)
 
-#        data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
+        data['trace_corr'] = np.corrcoef(Ftrace.T, rowvar=False)
         data['iscell'] = iscell
 
         data['F'], data['Fraw'], data['df_closedloop'], data['centroidX'], data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
@@ -115,14 +110,9 @@ def main(folder, index=None):
         iscell = np.load(folder + r'/suite2p_photostim/plane0/iscell.npy', allow_pickle=True)
         stat = np.load(folder + r'/suite2p_photostim/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim/plane0/F.npy', allow_pickle=True)
-        if keep_suite2p_cells == 1:
-            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-        else:
-            cells = np.arange(iscell.shape[0])   # 0..N-1
-        
-        Ftrace = Ftrace[cells, :]
-        stat   = stat[cells]
-
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
         ops = np.load(folder + r'/suite2p_photostim/plane0/ops.npy', allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_photostim/plane0/siHeader.npy', allow_pickle=True).tolist()    
         data['photostim'] = dict()
@@ -132,15 +122,9 @@ def main(folder, index=None):
         iscell = np.load(folder + r'/suite2p_photostim2/plane0/iscell.npy', allow_pickle=True)
         stat = np.load(folder + r'/suite2p_photostim2/plane0/stat.npy', allow_pickle=True)#note that this is only defined in the BCI folder
         Ftrace = np.load(folder +r'/suite2p_photostim2/plane0/F.npy', allow_pickle=True)
-        if keep_suite2p_cells == 1:
-            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-        else:
-            cells = np.arange(iscell.shape[0])   # 0..N-1
-        
-        Ftrace = Ftrace[cells, :]
-        stat   = stat[cells]
-
- 
+        cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+        Ftrace = Ftrace[cells,:]
+        stat = stat[cells]
         
         ops = np.load(folder + r'/suite2p_photostim2/plane0/ops.npy', allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_photostim2/plane0/siHeader.npy', allow_pickle=True).tolist()    
@@ -194,20 +178,14 @@ def main(folder, index=None):
             
             # Load files if they exist
             if os.path.exists(iscell_path) and os.path.exists(stat_path) and os.path.exists(F_path):
-                iscell = np.load(iscell_path, allow_pickle=True)
+                iscell_data = np.load(iscell_path, allow_pickle=True)
                 stat_data   = np.load(stat_path, allow_pickle=True)
                 F_data      = np.load(F_path, allow_pickle=True)
                 
                 # Subselect real cells based on the iscell array
-                
-                if keep_suite2p_cells == 1:
-                    cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-                else:
-                    cells = np.arange(iscell.shape[0])   # 0..N-1
-                F_data = F_data[cells, :]
-                stat_data = stat_data[cells]
-                
-                
+                cells_idx = np.where(np.asarray(iscell_data)[:, 0] == 1)[0]
+                F_data = F_data[cells_idx, :]
+                stat_data = stat_data[cells_idx]
                 
                 # Save processed data in the dictionary with a key corresponding to the folder name
                 data[key] = F_data
@@ -835,13 +813,8 @@ def process_photostim(folder, subfolder, data, index):
     iscell = np.load(folder + subfolder + 'iscell.npy', allow_pickle=True)
     stat = np.load(folder + subfolder + 'stat.npy', allow_pickle=True)
     Ftrace = np.load(folder + subfolder + 'F.npy', allow_pickle=True)
-    if keep_suite2p_cells == 1:
-        cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-    else:
-        cells = np.arange(iscell.shape[0])   # 0..N-1
-    
-    Ftrace = Ftrace[cells, :]
-    
+    cells = np.where(np.asarray(iscell)[:,0]==1)[0]
+    Ftrace = Ftrace[cells,:]
     Ftrace_copy = Ftrace.copy()
     stat = stat[cells]
     
@@ -858,7 +831,6 @@ def process_photostim(folder, subfolder, data, index):
     data[key_name]['favg_raw'], data[key_name]['stim_params'] = stimDist_single_cell(ops, Ftrace, siHeader, stat, 0)
     
     offset = seq_offset(data,key_name)
-    offset = 0
     if offset != 0:
         print('offset detected for ' + key_name)
         data[key_name] = dict()
@@ -1023,14 +995,9 @@ def extract_ch1_data(folder, pre, post):
         Ftrace = np.load(os.path.join(ch1_path, 'F.npy'), allow_pickle=True)
         ops = np.load(os.path.join(ch1_path, 'ops.npy'), allow_pickle=True).tolist()
 
-        if keep_suite2p_cells == 1:
-            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-        else:
-            cells = np.arange(iscell.shape[0])   # 0..N-1
-        
+        cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
         Ftrace = Ftrace[cells, :]
-        stat   = stat[cells]
-
+        stat = stat[cells]
 
         ch1_data = {}
         ch1_data['F'], ch1_data['Fraw'], ch1_data['df_closedloop'], ch1_data['centroidX'], ch1_data['centroidY'] = create_BCI_F(Ftrace, ops, stat, pre, post)
@@ -1100,7 +1067,6 @@ def stimDist_single_cell(ops, F, siHeader, stat, offset=0):
         a = F[:, ind].T
         g = F[:, ind].T
         bl = np.tile(np.mean(a[0:pre, :], axis=0), (a.shape[0], 1))
-        bl[bl==0] = np.nan
         a = (a - bl) / bl
         if a.shape[0] > Fstim.shape[0]:
             a = a[0:Fstim.shape[0], :]

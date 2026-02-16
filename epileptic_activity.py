@@ -4,29 +4,32 @@ Steinmetz-style epileptiform event detection for 2-photon FOV
 Data-driven clustering adapted to modality
 Author: Kayvon Daie
 """
-
+#https://alleninstitute-my.sharepoint.com/:p:/g/personal/kayvon_daie_alleninstitute_org/EQbyUKYVqvVKlHoWZpR50IEBGlv8aEE8t8XnbG8Pwn1CHA?e=0NWsGB
 import numpy as np, matplotlib.pyplot as plt, tifffile as tiff, extract_scanimage_metadata, os
 
-#fname = r'//allen/aind/scratch/BCI/2p-raw/BCI98/110724/pophys/spont_00003.tif'
+fname = r'//allen/aind/scratch/BCI/2p-raw/BCI98/110724/pophys/spont_00003.tif'
 #fname = r'//allen/aind/scratch/BCI/2p-raw/BCI102/021125/pophys/spontPre2_00001.tif'
 # fname = r'//allen/aind/scratch/BCI/2p-raw/BCI103/020325/pophys/spont_00003.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI105/012325/pophys/spont_00007.tif'
 # fname = '//allen/aind/scratch/BCI/2p-raw/BCI112/051325/pophys/spont_00014.tif'
-# fname = '//allen/aind/scratch/BCI/2p-raw/BCI112/050225/pophys/spont_00001.tif'
+#fname = '//allen/aind/scratch/BCI/2p-raw/BCI112/050225/pophys/spont_00001.tif'
 fname = '//allen/aind/scratch/BCI/2p-raw/BCI98/030625_spont/pophys/spont_00002.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI103/020625/pophys/spont_00001.tif'
 #fname = '//allen/aind/scratch/BCI/2p-raw/BCI31/052422/pophys/spont_00011.tif'
-# fname = '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif'
-#fname = '//allen/aind/scratch/BCI/2p-raw/808929/spont_00001.tif'
+#fname = '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif'
+#fname = '//allen/aind/scratch/BCI/2p-raw/808929/spont_00001.tif'#Oi1
+#fname = '//allen/aind/scratch/BCI/2p-raw/820614/110625/spont_2chn_00001.tif'#creert2 237
+#fname = '//allen/aind/scratch/BCI/2p-raw/820615/110625/spont_2chn_00001.tif'#creert2 237
 folder = os.path.dirname(fname)
 base = os.path.basename(fname)
 mouse = folder.split('/')[-3]
 session = folder.split('/')[-2]
-# prefix = 'spont_'
-prefix = base.split('_')[0] + '_'
 
-if fname == '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif':
-    prefix = 'spont_2chn_'
+if base.startswith("spont_2chn_"):
+    prefix = "spont_2chn_"
+else:
+    prefix = "spont_"
+
 
 # match only: prefix + 5 digits + '.tif'
 files = sorted([
@@ -43,8 +46,8 @@ for f in files:
     dt_si = 1 / float(siHeader['metadata']['hRoiManager']['scanVolumeRate'])
     data = tiff.imread(f)
     T = data.shape[0]
-    frame_means = data.reshape(T,-1).mean(axis=1)
-    if fname == '//allen/aind/scratch/BCI/2p-raw/BCI0/111925/pophys/spont_2chn_00001.tif':
+    frame_means = data.reshape(T,-1).mean(axis=1)    
+    if prefix == "spont_2chn_":
         frame_means = frame_means[0::2]    
     f0 = np.percentile(frame_means,20)
     dff = (frame_means - f0)/f0
@@ -59,7 +62,7 @@ t = np.arange(len(dff)) * dt_si
 
 plt.plot(t, dff, lw=1)
 plt.plot(t, dff, 'k',lw=1);
-plt.xlim((50,73));
+plt.xlim((10,33));
 plt.ylim((-.1,.5))
 plt.xlabel('time (s)')
 plt.ylabel('ΔF/F')
@@ -70,7 +73,7 @@ plt.title(mouse + ' ' + session)
 pk_pos, prop_pos = find_peaks(dff, prominence=0, width=0)
 pk_neg, prop_neg = find_peaks(-dff, prominence=0, width=0)
 
-peaks = np.concatenate([pk_pos,pk_neg])
+peaks = np.concatenate([pk_pos])
 prom = np.concatenate([prop_pos['prominences'], prop_neg['prominences']])
 width = np.concatenate([prop_pos['widths'], prop_neg['widths']]) * dt_si
 
@@ -121,9 +124,10 @@ for p in event_peaks:
 
 aligned = np.array(aligned)
 
+plt.subplot(144)
 if len(aligned) > 0:
     tt = np.arange(-win, win) * dt_si    
-    plt.subplot(144)
+    
     plt.plot(tt, aligned.T, color='gray', alpha=0.25)
     plt.plot(tt, aligned.mean(axis=0), color='red', lw=2)
     plt.xlabel('Time (s)')
