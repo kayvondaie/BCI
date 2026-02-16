@@ -48,7 +48,9 @@ def mean_bin_plot(xx, yy, col = 5, pltt = 1, A = 1, color = 'k'):
         plt.errorbar(X, Y, stdEr, marker='o', markersize=5,
                      color=color, markerfacecolor=color)
 
-    r, p = pearsonr(X, Y)
+    m = np.isfinite(xx) & np.isfinite(yy)
+    r, p = pearsonr(xx[m], yy[m])
+
     #print('p-value = ' + str(p))
     
 
@@ -116,7 +118,8 @@ def mean_bin_plot_shade(xx, yy, col=5, pltt=1, A=1, color='k', shade_color=None,
         plt.plot(X, Y, 'o-', color=color, markersize=5)
         plt.fill_between(X, Y - stdEr, Y + stdEr, color=shade_color, alpha=alpha)
 
-    r, p = pearsonr(X, Y)
+    m = np.isfinite(xx) & np.isfinite(yy)
+    r, p = pearsonr(xx[m], yy[m])
     return X, Y, p
 
 

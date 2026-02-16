@@ -215,7 +215,7 @@ plt.subplot(121)
 plt.plot(x,np.nanmean(rt_epoch,axis=1),'k.-')    
 plt.xlabel('Trials since Thr change')
 plt.ylabel('$\Delta$ Time to reward (s)')
-delta_rt.append(np.nanmean(rt_epoch,axis=1))
+# delta_rt.append(np.nanmean(rt_epoch,axis=1))
 
 plt.subplot(122)
 plt.plot(x,np.nanmean(tuning_epoch,axis=1),'k.-')
