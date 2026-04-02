@@ -26,14 +26,13 @@ si = 29;
 folder = str(list_of_dirs[si])
 #%%
 mice = ["BCI102","BCI103","BCI104","BCI105","BCI106","BCI109"]
-#mice = ["BCI102","BCI109","BCI105","BCI106"]
+mice = ["BCI102"]
 HI, RT, HIT, HIa, HIb, HIc, DOT, TRL, THR, RPE, FIT, GRP, RPE_FIT, DW = ([] for _ in range(14))
-XALL, YALL, B, XPRE3, PVAL, BETA = ([] for _ in range(6))
+XALL, YALL, B, XPRE3, PVAL, BETA, INTERCEPT, POP = ([] for _ in range(8))
 
 # Top-level design configuration (used in session loop and baseline block)
 EPOCH_ORDER = ["pre", "go_cue", "late", "reward"]
 BEHAVIOR_SPECS = [
-    {"name": "hit", "source": "hit_bin"},
     {"name": "hit_rpe", "source": "hit_rpe_bin"},
     {"name": "10-rt", "source": lambda d: 10 - np.asarray(d["rt_bin"], dtype=float)},
     {"name": "rpe", "source": "rpe_bin"},
@@ -41,14 +40,22 @@ BEHAVIOR_SPECS = [
     {"name": "2-factor", "source": lambda d: np.ones_like(np.asarray(d["hit_bin"], dtype=float))},
 ]
 
+EPOCH_ORDER = ["go_cue"]
+BEHAVIOR_SPECS = [
+    {"name": "rpe", "source": "rpe_bin"},
+    {"name": "2-factor", "source": lambda d: np.ones_like(np.asarray(d["hit_bin"], dtype=float))},
+]
+
+
+
 for mi in range(len(mice)):
     
-    pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean, dot_prod_z
+    pairwise_mode = 'dot_prod'  #dot_prod, noise_corr,dot_prod_no_mean, dot_prod_z, lag_to_late, lag_to_rew
     fit_type      = 'pinv'     #ridge, pinv
     alpha         =  100        #only used for ridge
     lasso_alphas = np.logspace(-6, 0, 60)  # only if you don't know alpha_max scale
 
-    num_bins      =  10        # number of bins to calculate correlations
+    num_bins      =  50        # number of bins to calculate correlations
     tau_elig      =  10         # number of trials for eligibility trace in RPE calculation
     shuffle       =  0
     plotting      =  1
@@ -56,9 +63,9 @@ for mi in range(len(mice)):
     correct_direct = True
     mouse = mice[mi]
     session_inds = np.where((list_of_dirs['Mouse'] == mouse) & (list_of_dirs['Has data_main.npy']==True))[0]
-    si = 2;
+    si = 0;
     for sii in range(len(session_inds)):
-    #for sii in range(si,si+1):
+    #for sii in range(si,si+2):
         try:
             print(sii)
             mouse = list_of_dirs['Mouse'][session_inds[sii]]
@@ -429,7 +436,8 @@ for mi in range(len(mice)):
         
             if beta_reshaped is not None:
                 HI.append(beta_reshaped)
-            RT.append(np.nanmean(rt))
+            RT.append(rt)
+            RPE.append(rt_rpe)
             HIT.append(hit)
             FIT.append(np.mean(corr_test) if len(corr_test) > 0 else np.nan)            
             GRP.append(stimDist.shape[1])
@@ -439,6 +447,8 @@ for mi in range(len(mice)):
             XALL.append(X_T)
             YALL.append(Y_T)
             XPRE3.append(Xpre_T)
+            POP.append(k)
+            INTERCEPT.append(ridge_m.intercept_)
             PVAL.append(np.exp(np.mean(np.log(p_test))) if len(p_test) > 0 else np.nan)
             
             if plotting == 1:
@@ -573,7 +583,7 @@ Y_test_z  = (Y_test  - mu) / sigma
 # ----------------------------
 # FAST model (fixed alpha) on BASE columns only
 # ----------------------------
-alpha_fast = 10**(-3)
+alpha_fast = 10**(-13)
 
 model = Pipeline([
     ('scaler', StandardScaler()),
@@ -619,3 +629,27 @@ plt.ylabel('Trial epoch')
 plt.tight_layout()
 plt.tight_layout()
 plt.show()
+#%%
+
+A,R = [],[]
+figure(figsize = (12,8))
+for i in range(11):
+    subplot(2,6,i+1)
+    plot(nanmean(POP[i],0))
+    a = round(BETA[i][0][0]*10000)
+    A.append(a)
+    plt.title(str(a))
+    r,p = pearsonr(nanmean(POP[i],0)[0:10],RPE[i][0:10])
+    R.append(r)
+tight_layout()
+show()
+scatter(A,R)
+xlabel('RPE coeff')
+ylabel('POP to RPE correlation')
+_,p = pearsonr(A,R)
+print(p)
+
+
+
+
+
