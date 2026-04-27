@@ -1,12 +1,6 @@
 #%% ============================================================================
 # CELL 1: Imports and Setup
 # ============================================================================
-"""
-Variant of sliding_window_temporal_offset.py testing two controls:
-  1. dev2_fulltrial_baseline — epoch-resolved, but baseline subtraction uses
-     the full-trial mean of the post neuron (instead of epoch-specific mean).
-  2. full_trial — no epochs; CC is computed over the entire trial.
-"""
 import sys, os
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _THIS_DIR not in sys.path or sys.path[0] != _THIS_DIR:
@@ -42,6 +36,11 @@ print("Setup complete!")
 #%% ============================================================================
 # CELL 2: Configuration
 # ============================================================================
+USE_LOCAL_DATA = True   # True = F:\three_factor_data_2025, False = shared drive
+_BASE_SHARED = r'//allen/aind/scratch/BCI/2p-raw'
+_BASE_LOCAL  = r'F:\three_factor_data_2025'
+DATA_BASE = _BASE_LOCAL if USE_LOCAL_DATA else _BASE_SHARED
+
 mice = ["BCI102", "BCI103", "BCI104", "BCI105", "BCI106", "BCI109"]
 
 # Sliding window parameters
@@ -52,14 +51,13 @@ tau_elig = 10
 # Temporal offset in seconds (pre leads post)
 OFFSET_SEC = 0
 
-# Baseline trials for dev2 modes
+# Baseline trials for dev2 mode
 N_BASELINE = 20
 
-# CC modes for this script:
-#   'dev2_fulltrial_baseline' — epoch-resolved CC, but baseline = full-trial mean
-#   'full_trial'              — CC over entire trial (no epochs), dev2-style (baseline subtracted)
-#   'full_trial_dot_prod'     — CC over entire trial (no epochs), raw dot product (no baseline)
-CC_MODES = ['dev2_fulltrial_baseline', 'full_trial', 'full_trial_dot_prod']
+# CC modes:
+#   'dot_prod_lag'  — sum_t pre(t) * post(t + lag), using full trial F data
+#   'dev2_lag'      — sum_t pre(t) * (post(t + lag) - mean_post_baseline)
+CC_MODES = ['dot_prod_lag', 'dev2_lag']
 
 all_results = {mode: [] for mode in CC_MODES}
 print(f"Sliding window: {WIN_SIZE} trials, step {WIN_STEP}")
@@ -95,8 +93,7 @@ for mi in range(len(mice)):
             if (mouse, session) in _qc_fail:
                 print(f"  Skipping {mouse} {session} -- failed QC")
                 continue
-            folder = (r'//allen/aind/scratch/BCI/2p-raw/'
-                      + mouse + r'/' + session + '/pophys/')
+            folder = DATA_BASE + '/' + mouse + '/' + session + '/pophys/'
             print(f"\n--- {mouse} {session} ({sii+1}/{len(session_inds)}) ---")
 
             photostim_keys = ['stimDist', 'favg_raw']
@@ -213,8 +210,18 @@ for mi in range(len(mice)):
             ts_pre = np.where((tsta > -10) & (tsta < 0))[0]
 
             # ---- Compute lagged epoch averages ----
+            # Same epoch structure as before, but pre and post use offset time windows.
+            # Pre: average F over [epoch_start, epoch_end]
+            # Post: average F over [epoch_start + lag, epoch_end + lag]
+            # This gives one scalar per neuron per trial per epoch, same as before.
+
             EPOCH_ORDER = ["pre", "go_cue", "late", "reward"]
             n_epochs = len(EPOCH_ORDER)
+
+            # Compute lagged epoch activity: pre neuron uses original window,
+            # post neuron uses window shifted by lag_frames
+            # For simplicity: average pre over epoch, average post over epoch+lag
+            # Shape: (n_neurons, trl) for each
 
             epoch_pre_act = {}   # presynaptic: original epoch window
             epoch_post_act = {}  # postsynaptic: epoch window + lag
@@ -258,49 +265,16 @@ for mi in range(len(mice)):
                         if len(indices_lag) > 0:
                             epoch_post_act['reward'][:, ti] = np.nanmean(F_nan[indices_lag, :, ti], axis=0)
 
-            # ==================================================================
-            # Full-trial activity (no epochs)
-            # Pre neuron: mean over all frames; Post neuron: mean over all frames + lag
-            # Shape: (n_neurons, trl)
-            # ==================================================================
-            fulltrial_pre_act = np.nanmean(F_nan, axis=0)  # (n_neurons, trl)
-            if lag_frames == 0:
-                fulltrial_post_act = fulltrial_pre_act.copy()
-            else:
-                t0_ft = max(0, lag_frames)
-                t1_ft = min(n_frames, n_frames + lag_frames)
-                fulltrial_post_act = np.nanmean(
-                    F_nan[t0_ft:t1_ft, :, :], axis=0)  # (n_neurons, trl)
-
-            # ==================================================================
-            # Baselines
-            # ==================================================================
+            # Baseline post mean per epoch (for dev2)
             baseline_trials_arr = np.arange(min(N_BASELINE, trl))
+            baseline_post_mean_ep = {}
+            for ep in EPOCH_ORDER:
+                baseline_post_mean_ep[ep] = np.nanmean(
+                    epoch_post_act[ep][:, baseline_trials_arr], axis=1)  # (n_neurons,)
 
-            # Full-trial baseline: mean post activity across ALL frames,
-            # averaged over the first N_BASELINE trials
-            baseline_post_mean_fulltrial = np.nanmean(
-                fulltrial_post_act[:, baseline_trials_arr], axis=1)  # (n_neurons,)
-
-            # ---- Compute CC per window ----
-            # dev2_fulltrial_baseline: epoch-resolved, but subtract full-trial baseline
-            dev2_ftb_cc = np.full((n_wins, n_pairs, n_epochs), np.nan)
-            # full_trial: single CC per window (no epoch dimension -> 1), dev2-style
-            fulltrial_cc = np.full((n_wins, n_pairs, 1), np.nan)
-            # full_trial_dot_prod: single CC per window, raw dot product (no baseline)
-            fulltrial_dp_cc = np.full((n_wins, n_pairs, 1), np.nan)
-
-            # Per-pair CC arrays for pre epoch only (for flip decomposition).
-            # raw = pre*post, dev2 = pre*(post-baseline), correction = dev2 - raw
-            raw_cc_pre = np.full((n_wins, n_pairs), np.nan)
-            dev2_cc_pre = np.full((n_wins, n_pairs), np.nan)
-
-            # Per-window deviation of post-synaptic (nontarget) neurons from
-            # their baseline, in the pre epoch.  One scalar per window.
-            #   win_mean_dev:  mean signed deviation (drift direction)
-            #   win_abs_dev:   mean |deviation|   (drift magnitude)
-            win_mean_dev = np.full(n_wins, np.nan)
-            win_abs_dev = np.full(n_wins, np.nan)
+            # ---- Compute CC per window per epoch (same structure as v2) ----
+            raw_cc = np.full((n_wins, n_pairs, n_epochs), np.nan)
+            dev2_cc = np.full((n_wins, n_pairs, n_epochs), np.nan)
 
             win_hit = np.full(n_wins, np.nan)
             win_rpe = np.full(n_wins, np.nan)
@@ -317,58 +291,31 @@ for mi in range(len(mice)):
                 win_rpe[wi] = np.nanmean(rt_rpe[trial_idx])
                 win_hit_rpe[wi] = np.nanmean(hit_rpe[trial_idx])
 
-                # --- deviation of nontarget post neurons from baseline (pre epoch) ---
-                post_pre_ep = epoch_post_act['pre'][all_nt, :][:, trial_idx]  # (n_pairs, win_size)
-                dev_from_bl = post_pre_ep - baseline_post_mean_fulltrial[all_nt, np.newaxis]
-                win_mean_dev[wi] = np.mean(dev_from_bl)
-                win_abs_dev[wi] = np.mean(np.abs(dev_from_bl))
-
-                # --- per-pair CC for pre epoch (raw and dev2, for flip analysis) ---
-                pre_act_pre = cl_weights @ epoch_pre_act['pre'][:, trial_idx]
-                post_act_pre = epoch_post_act['pre'][all_nt, :][:, trial_idx]
-                raw_cc_pre[wi, :] = np.sum(pre_act_pre * post_act_pre, axis=1)
-                post_dev_pre = post_act_pre - baseline_post_mean_fulltrial[all_nt, np.newaxis]
-                dev2_cc_pre[wi, :] = np.sum(pre_act_pre * post_dev_pre, axis=1)
-
-                # --- dev2_fulltrial_baseline: epoch-resolved, full-trial baseline ---
                 for ei, ep in enumerate(EPOCH_ORDER):
+                    # Pre activity: original epoch window; Post: shifted by lag
                     pre_act = cl_weights @ epoch_pre_act[ep][:, trial_idx]   # (n_pairs, win_size)
-                    post_dev = (epoch_post_act[ep][all_nt, :][:, trial_idx]
-                                - baseline_post_mean_fulltrial[all_nt, np.newaxis])
-                    cc_dev2_ftb = np.sum(pre_act * post_dev, axis=1)
-                    dev2_ftb_cc[wi, :, ei] = cc_dev2_ftb
+                    post_act = epoch_post_act[ep][all_nt, :][:, trial_idx]   # (n_pairs, win_size)
+                    cc_raw = np.sum(pre_act * post_act, axis=1)              # (n_pairs,)
+                    raw_cc[wi, :, ei] = cc_raw
 
-                # --- full_trial: no epochs, entire trial (dev2-style) ---
-                pre_act_ft = cl_weights @ fulltrial_pre_act[:, trial_idx]    # (n_pairs, win_size)
-                post_dev_ft = (fulltrial_post_act[all_nt, :][:, trial_idx]
-                               - baseline_post_mean_fulltrial[all_nt, np.newaxis])
-                cc_ft = np.sum(pre_act_ft * post_dev_ft, axis=1)
-                fulltrial_cc[wi, :, 0] = cc_ft
+                    # dev2: pre(t) * (post(t+lag) - mean_post_baseline)
+                    post_dev = epoch_post_act[ep][all_nt, :][:, trial_idx] - baseline_post_mean_ep[ep][all_nt, np.newaxis]
+                    cc_dev2 = np.sum(pre_act * post_dev, axis=1)
+                    dev2_cc[wi, :, ei] = cc_dev2
 
-                # --- full_trial_dot_prod: no epochs, raw dot product ---
-                post_act_ft = fulltrial_post_act[all_nt, :][:, trial_idx]   # (n_pairs, win_size)
-                cc_ft_dp = np.sum(pre_act_ft * post_act_ft, axis=1)
-                fulltrial_dp_cc[wi, :, 0] = cc_ft_dp
 
-            # ---- Fit slope/intercept for each mode ----
+            # ---- Fit slope/intercept for each mode per epoch ----
             for mode in CC_MODES:
-                if mode == 'dev2_fulltrial_baseline':
-                    n_ep_mode = n_epochs
-                    cc_data = dev2_ftb_cc
-                elif mode == 'full_trial':
-                    n_ep_mode = 1
-                    cc_data = fulltrial_cc
-                elif mode == 'full_trial_dot_prod':
-                    n_ep_mode = 1
-                    cc_data = fulltrial_dp_cc
+                hi_no_int = np.full((n_wins, n_epochs), np.nan)
+                hi_with_int = np.full((n_wins, n_epochs), np.nan)
+                hi_intercept = np.full((n_wins, n_epochs), np.nan)
+                hi_corr = np.full((n_wins, n_epochs), np.nan)
 
-                hi_no_int = np.full((n_wins, n_ep_mode), np.nan)
-                hi_with_int = np.full((n_wins, n_ep_mode), np.nan)
-                hi_intercept = np.full((n_wins, n_ep_mode), np.nan)
-                hi_corr = np.full((n_wins, n_ep_mode), np.nan)
-
-                for ei in range(n_ep_mode):
-                    cc_all = cc_data[:, :, ei]
+                for ei, ep in enumerate(EPOCH_ORDER):
+                    if mode == 'dot_prod_lag':
+                        cc_all = raw_cc[:, :, ei]
+                    elif mode == 'dev2_lag':
+                        cc_all = dev2_cc[:, :, ei]
 
                     for wi in range(n_wins):
                         cc_pair = cc_all[wi, :]
@@ -383,6 +330,14 @@ for mi in range(len(mice)):
                         hi_with_int[wi, ei] = coeffs[1]
 
                         hi_corr[wi, ei], _ = pearsonr(cc_pair, Y_T)
+
+                def count_flips(arr):
+                    signs = np.sign(arr)
+                    valid = np.isfinite(signs)
+                    s = signs[valid]
+                    if len(s) < 2:
+                        return 0
+                    return int(np.sum(s[1:] != s[:-1]))
 
                 result = {
                     'mouse': mouse,
@@ -404,14 +359,6 @@ for mi in range(len(mice)):
                     'win_rpe': win_rpe,
                     'win_rt': win_rt,
                     'win_hit_rpe': win_hit_rpe,
-                    'win_mean_dev': win_mean_dev,
-                    'win_abs_dev': win_abs_dev,
-                    'sess_mean_dev': np.nanmean(win_mean_dev),
-                    'sess_abs_dev': np.nanmean(win_abs_dev),
-                    # Per-pair CC arrays for pre epoch (n_wins x n_pairs)
-                    'raw_cc_pre': raw_cc_pre,
-                    'dev2_cc_pre': dev2_cc_pre,
-                    'Y_T': Y_T,  # dW per pair (n_pairs,)
                 }
                 all_results[mode].append(result)
 
@@ -428,7 +375,7 @@ for mode in CC_MODES:
 #%% ============================================================================
 # CELL 4: Save
 # ============================================================================
-np.save(os.path.join(RESULTS_DIR, 'sliding_window_temporal_offset_v2.npy'),
+np.save(os.path.join(RESULTS_DIR, 'sliding_window_temporal_offset.npy'),
         all_results, allow_pickle=True)
 print("Saved.")
 
@@ -436,7 +383,7 @@ print("Saved.")
 # CELL 5: Load
 # ============================================================================
 all_results = np.load(
-    os.path.join(RESULTS_DIR, 'sliding_window_temporal_offset_v2.npy'),
+    os.path.join(RESULTS_DIR, 'sliding_window_temporal_offset.npy'),
     allow_pickle=True).item()
 CC_MODES = list(all_results.keys())
 print(f"Loaded modes: {CC_MODES}")
@@ -465,19 +412,15 @@ corr_intercept = {}
 for mode in CC_MODES:
     results = all_results[mode]
     n_s = len(results)
-
-    # full_trial has 1 "epoch"; dev2_fulltrial_baseline has 4
-    n_ep_mode = results[0]['hi_with_int'].shape[1] if n_s > 0 else n_epochs
-
-    cs = np.full((n_s, n_beh, n_ep_mode), np.nan)
-    ci = np.full((n_s, n_beh, n_ep_mode), np.nan)
+    cs = np.full((n_s, n_beh, n_epochs), np.nan)
+    ci = np.full((n_s, n_beh, n_epochs), np.nan)
 
     for si, s in enumerate(results):
         for bi, bname in enumerate(beh_names):
             bvar = get_beh(s, bname)
             if np.sum(np.isfinite(bvar)) < 5 or np.std(bvar[np.isfinite(bvar)]) == 0:
                 continue
-            for ei in range(n_ep_mode):
+            for ei in range(n_epochs):
                 slope = s['hi_with_int'][:, ei]
                 intercept = s['hi_intercept'][:, ei]
                 ok = np.isfinite(bvar) & np.isfinite(slope)
@@ -493,7 +436,7 @@ for mode in CC_MODES:
 print("Within-session correlations computed.")
 
 #%% ============================================================================
-# CELL 7: Coefficient matrices — behavior x epoch
+# CELL 7: Coefficient matrices — behavior x epoch (same style as v2)
 # ============================================================================
 epoch_labels = ['Pre', 'Go cue', 'Late', 'Reward']
 
@@ -502,23 +445,17 @@ fig, axes = plt.subplots(2, len(CC_MODES), figsize=(5 * len(CC_MODES), 6),
 
 for col, mode in enumerate(CC_MODES):
     n_s = len(all_results[mode])
-    n_ep_mode = corr_slope[mode].shape[2]
-
-    if mode in ('full_trial', 'full_trial_dot_prod'):
-        ep_labels_mode = ['Full trial']
-    else:
-        ep_labels_mode = epoch_labels
 
     for row, (corr_arr, row_label) in enumerate([
         (corr_slope[mode], 'Slope'),
         (corr_intercept[mode], 'Intercept'),
     ]):
         ax = axes[row, col]
-        mat_mean = np.full((n_beh, n_ep_mode), np.nan)
-        mat_p = np.full((n_beh, n_ep_mode), np.nan)
+        mat_mean = np.full((n_beh, n_epochs), np.nan)
+        mat_p = np.full((n_beh, n_epochs), np.nan)
 
         for bi in range(n_beh):
-            for ei in range(n_ep_mode):
+            for ei in range(n_epochs):
                 vals = corr_arr[:, bi, ei]
                 v = vals[np.isfinite(vals)]
                 if len(v) < 3:
@@ -537,7 +474,7 @@ for col, mode in enumerate(CC_MODES):
 
         # Annotate with values and significance stars
         for bi in range(n_beh):
-            for ei in range(n_ep_mode):
+            for ei in range(n_epochs):
                 val = mat_mean[bi, ei]
                 p = mat_p[bi, ei]
                 if np.isnan(val):
@@ -555,52 +492,46 @@ for col, mode in enumerate(CC_MODES):
                 ax.text(ei, bi, txt, ha='center', va='center',
                         fontsize=9, fontweight='bold' if sig else 'normal')
 
-        ax.set_xticks(range(n_ep_mode))
-        ax.set_xticklabels(ep_labels_mode, rotation=30, ha='right')
+        ax.set_xticks(range(n_epochs))
+        ax.set_xticklabels(epoch_labels, rotation=30, ha='right')
         ax.set_yticks(range(n_beh))
         ax.set_yticklabels(beh_labels)
         plt.colorbar(im, ax=ax, shrink=0.8, label='Mean rho')
 
         if row == 0:
-            ax.set_title(f'{mode}\n({row_label})', fontsize=13, fontweight='bold')
+            disp = mode.replace('_lag', f' (lag={OFFSET_SEC}s)')
+            ax.set_title(f'{disp}\n({row_label})', fontsize=13, fontweight='bold')
         else:
             ax.set_title(f'({row_label})', fontsize=12)
 
-fig.suptitle(f'Control analyses (n={n_s} sessions)',
+lag_str = f"{OFFSET_SEC}s"
+fig.suptitle(f'Temporal offset: pre leads post by {lag_str} (n={n_s} sessions)',
              fontsize=15, fontweight='bold', y=1.02)
 plt.tight_layout()
-plt.savefig(os.path.join(RESULTS_DIR, 'fig_temporal_offset_v2_controls.png'),
+plt.savefig(os.path.join(RESULTS_DIR, 'fig12_temporal_offset_matrices.png'),
             dpi=150, bbox_inches='tight')
 plt.show()
-print("Figure saved.")
+print("Figure 12 saved.")
 
 #%% ============================================================================
 # CELL 8: Text report
 # ============================================================================
-report_path = os.path.join(RESULTS_DIR, 'temporal_offset_v2_report.txt')
+report_path = os.path.join(RESULTS_DIR, 'temporal_offset_report.txt')
 with open(report_path, 'w', encoding='utf-8') as f:
-    f.write("TEMPORAL OFFSET COACTIVITY — CONTROL ANALYSES\n")
+    f.write("TEMPORAL OFFSET COACTIVITY ANALYSIS\n")
     f.write(f"Generated: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
     f.write(f"Window: {WIN_SIZE} trials, step {WIN_STEP}\n")
     f.write(f"Temporal offset: {OFFSET_SEC}s (pre leads post)\n")
     f.write("=" * 70 + "\n\n")
 
     f.write("CC MODES:\n")
-    f.write(f"  dev2_fulltrial_baseline : epoch-resolved CC, baseline = full-trial\n")
-    f.write(f"                            mean (not epoch-specific mean)\n")
-    f.write(f"  full_trial              : CC over entire trial, no epoch splitting\n")
-    f.write(f"                            (dev2-style, baseline subtracted)\n")
-    f.write(f"  full_trial_dot_prod     : CC over entire trial, raw dot product\n")
-    f.write(f"                            (no baseline subtraction)\n\n")
+    f.write(f"  dot_prod_lag : sum_t pre(t) * post(t + lag), epoch-averaged\n")
+    f.write(f"  dev2_lag     : sum_t pre(t) * (post(t+lag) - mean_post_baseline)\n\n")
+
+    epoch_labels_rpt = ['pre', 'go_cue', 'late', 'reward']
 
     for mode in CC_MODES:
         n_s = len(all_results[mode])
-        n_ep_mode = corr_slope[mode].shape[2]
-        if mode in ('full_trial', 'full_trial_dot_prod'):
-            ep_labels_rpt = ['full_trial']
-        else:
-            ep_labels_rpt = ['pre', 'go_cue', 'late', 'reward']
-
         f.write(f"\n{'='*50}\n")
         f.write(f"MODE: {mode}  ({n_s} sessions)\n")
         f.write(f"{'='*50}\n\n")
@@ -615,7 +546,7 @@ with open(report_path, 'w', encoding='utf-8') as f:
                     f"{'%>0':>5s} {'Wilcoxon p':>10s} {'sig':>4s}\n")
 
             for bi, bname in enumerate(beh_names):
-                for ei, ep in enumerate(ep_labels_rpt):
+                for ei, ep in enumerate(epoch_labels_rpt):
                     vals = corr_arr[:, bi, ei]
                     v = vals[np.isfinite(vals)]
                     m = np.mean(v) if len(v) > 0 else np.nan
@@ -634,91 +565,280 @@ with open(report_path, 'w', encoding='utf-8') as f:
 print(f"Report saved to: {report_path}")
 
 #%% ============================================================================
-# CELL 9: Binned plots — HI (slope) vs RPE and HI vs Hit rate, all 3 modes
+# CELL 9: Binned scatter — within-session z-scored RPE vs Slope (dev2, pre epoch)
 # ============================================================================
+mode_plot = 'dev2_lag'
+ei_plot = 0  # pre epoch
+
+# Collect within-session z-scored RPE and slope
+all_rpe_z = []
+all_slope_z = []
+
+for s in all_results[mode_plot]:
+    rpe = s['win_rpe']
+    slope = s['hi_with_int'][:, ei_plot]
+    ok = np.isfinite(rpe) & np.isfinite(slope)
+    if np.sum(ok) < 5:
+        continue
+    rpe_ok = rpe[ok]
+    slope_ok = slope[ok]
+    if np.std(rpe_ok) == 0 or np.std(slope_ok) == 0:
+        continue
+    all_rpe_z.append((rpe_ok - np.mean(rpe_ok)) / np.std(rpe_ok))
+    all_slope_z.append((slope_ok - np.mean(slope_ok)) / np.std(slope_ok))
+
+all_rpe_z = np.concatenate(all_rpe_z)
+all_slope_z = np.concatenate(all_slope_z)
+
+# Bin by z-scored RPE
 n_bins = 3
+bin_edges = np.percentile(all_rpe_z, np.linspace(0, 100, n_bins + 1))
+bin_centers = []
+bin_means = []
+bin_sems = []
 
-# For epoch-resolved mode, use all 4 epochs; for full_trial modes, use epoch 0
-# We'll plot one row per behavioral variable (RPE, hit rate) and one column per mode
-beh_plot = [('win_rpe', 'RPE'), ('win_hit', 'Hit rate')]
-
-fig, axes = plt.subplots(len(beh_plot), len(CC_MODES),
-                         figsize=(5 * len(CC_MODES), 4 * len(beh_plot)),
-                         squeeze=False)
-
-for col, mode in enumerate(CC_MODES):
-    results = all_results[mode]
-    n_ep_mode = results[0]['hi_with_int'].shape[1] if len(results) > 0 else 1
-
-    if mode in ('full_trial', 'full_trial_dot_prod'):
-        ep_indices = [0]
-        ep_names = ['Full trial']
-        colors = ['#2c3e50']
+for bi in range(n_bins):
+    if bi < n_bins - 1:
+        mask = (all_rpe_z >= bin_edges[bi]) & (all_rpe_z < bin_edges[bi + 1])
     else:
-        ep_indices = list(range(n_ep_mode))
-        ep_names = ['Pre', 'Go cue', 'Late', 'Reward']
-        colors = ['#c0392b', '#e67e22', '#27ae60', '#2980b9']
+        mask = (all_rpe_z >= bin_edges[bi]) & (all_rpe_z <= bin_edges[bi + 1])
+    if np.sum(mask) < 3:
+        continue
+    bin_centers.append(np.mean(all_rpe_z[mask]))
+    bin_means.append(np.mean(all_slope_z[mask]))
+    bin_sems.append(np.std(all_slope_z[mask]) / np.sqrt(np.sum(mask)))
 
-    for row, (beh_key, beh_label) in enumerate(beh_plot):
-        ax = axes[row, col]
+bin_centers = np.array(bin_centers)
+bin_means = np.array(bin_means)
+bin_sems = np.array(bin_sems)
 
-        for ei, ep_name, clr in zip(ep_indices, ep_names, colors):
-            # Collect within-session z-scored behavior and slope
-            all_beh_z = []
-            all_slope_z = []
+# Find session ranked by RPE-slope correlation (1 = best, 2 = second best, etc.)
+RANK = 3
 
-            for s in results:
-                bvar = s[beh_key]
-                slope = s['hi_with_int'][:, ei]
-                ok = np.isfinite(bvar) & np.isfinite(slope)
-                if np.sum(ok) < 5:
-                    continue
-                bvar_ok = bvar[ok]
-                slope_ok = slope[ok]
-                if np.std(bvar_ok) == 0 or np.std(slope_ok) == 0:
-                    continue
-                all_beh_z.append((bvar_ok - np.mean(bvar_ok)) / np.std(bvar_ok))
-                all_slope_z.append((slope_ok - np.mean(slope_ok)) / np.std(slope_ok))
+all_corrs = []
+for si, s in enumerate(all_results[mode_plot]):
+    rpe = s['win_rpe']
+    slope = s['hi_with_int'][:, ei_plot]
+    ok = np.isfinite(rpe) & np.isfinite(slope)
+    if np.sum(ok) >= 5 and np.std(slope[ok]) > 0 and np.std(rpe[ok]) > 0:
+        r, _ = spearmanr(rpe[ok], slope[ok])
+        all_corrs.append((r, si))
+    else:
+        all_corrs.append((np.nan, si))
 
-            if len(all_beh_z) == 0:
-                continue
-            all_beh_z = np.concatenate(all_beh_z)
-            all_slope_z = np.concatenate(all_slope_z)
+all_corrs.sort(key=lambda x: -x[0] if np.isfinite(x[0]) else np.inf)
+best_corr, best_idx = all_corrs[RANK - 1]
+best_s = all_results[mode_plot][best_idx]
 
-            # Bin by z-scored behavior
-            bin_edges = np.percentile(all_beh_z, np.linspace(0, 100, n_bins + 1))
-            bc, bm, bs = [], [], []
-            for bi in range(n_bins):
-                if bi < n_bins - 1:
-                    mask = (all_beh_z >= bin_edges[bi]) & (all_beh_z < bin_edges[bi + 1])
-                else:
-                    mask = (all_beh_z >= bin_edges[bi]) & (all_beh_z <= bin_edges[bi + 1])
-                if np.sum(mask) < 3:
-                    continue
-                bc.append(np.mean(all_beh_z[mask]))
-                bm.append(np.mean(all_slope_z[mask]))
-                bs.append(np.std(all_slope_z[mask]) / np.sqrt(np.sum(mask)))
+fig, axes = plt.subplots(1, 2, figsize=(11, 4))
 
-            ax.errorbar(bc, bm, yerr=bs, fmt='o-', color=clr, capsize=5,
-                        linewidth=2, markersize=7, label=ep_name)
+# Left: binned scatter
+ax = axes[0]
+ax.errorbar(bin_centers, bin_means, yerr=bin_sems, fmt='o-',
+            color='#2c3e50', capsize=5, linewidth=2, markersize=7)
+ax.axhline(0, color='k', ls='-', alpha=0.3)
+ax.axvline(0, color='k', ls='--', alpha=0.3)
+ax.set_xlabel('RPE (within-session z-score)')
+ax.set_ylabel('Slope (within-session z-score)')
+ax.set_title(f'dev2 lag={OFFSET_SEC}s — Pre epoch\nRPE vs HI slope (n={len(all_results[mode_plot])} sessions)',
+             fontsize=13, fontweight='bold')
 
-        ax.axhline(0, color='k', ls='-', alpha=0.3)
-        ax.axvline(0, color='k', ls='--', alpha=0.3)
-        ax.set_xlabel(f'{beh_label} (within-session z)')
-        ax.set_ylabel('Slope (within-session z)')
-        if row == 0:
-            ax.set_title(f'{mode}', fontsize=13, fontweight='bold')
-        if len(ep_indices) > 1:
-            ax.legend(fontsize=9, loc='best')
+# Right: time series for best session
+ax2 = axes[1]
+wc = best_s['win_centers']
+rpe_ts = best_s['win_rpe']
+slope_ts = best_s['hi_with_int'][:, ei_plot]
 
-# Row labels on left
-for row, (_, beh_label) in enumerate(beh_plot):
-    axes[row, 0].set_ylabel(f'{beh_label}\nSlope (within-session z)')
+ax2.plot(wc, (rpe_ts - np.nanmean(rpe_ts)) / np.nanstd(rpe_ts),
+         'o-', color='#e74c3c', label='RPE', linewidth=2, markersize=4)
+ax2.plot(wc, (slope_ts - np.nanmean(slope_ts)) / np.nanstd(slope_ts),
+         'o-', color='#2c3e50', label='HI slope', linewidth=2, markersize=4)
+ax2.axhline(0, color='k', ls='-', alpha=0.3)
+ax2.set_xlabel('Trial (window center)')
+ax2.set_ylabel('z-score')
+ax2.legend(loc='best')
+ax2.set_title(f'{best_s["mouse"]} {best_s["session"]}\nrho={best_corr:.3f}',
+              fontsize=13, fontweight='bold')
 
-fig.suptitle(f'Binned HI slope vs behavior (n={len(results)} sessions, {n_bins} bins)',
-             fontsize=15, fontweight='bold', y=1.02)
 plt.tight_layout()
-plt.savefig(os.path.join(RESULTS_DIR, 'fig_temporal_offset_v2_binned.png'),
+plt.savefig(os.path.join(RESULTS_DIR, 'fig14_rpe_vs_slope_binned.png'),
+            dpi=300, bbox_inches='tight')
+plt.show()
+print("Figure 14 saved.")
+
+#%% ============================================================================
+# CELL 10: Single-session dW vs CC scatter, split by RPE (re-computes CC)
+# ============================================================================
+# Uses best_s from Cell 9 (the RANK-th best session)
+ex_mouse = best_s['mouse']
+ex_session = best_s['session']
+ex_lag_sec = best_s['lag_sec']
+ei_plot_10 = 0  # pre epoch
+
+print(f"Re-computing CC for {ex_mouse} {ex_session}, lag={ex_lag_sec}s ...")
+
+# --- Reload session data ---
+folder = DATA_BASE + '/' + ex_mouse + '/' + ex_session + '/pophys/'
+photostim_keys = ['stimDist', 'favg_raw']
+bci_keys = [
+    'df_closedloop', 'F', 'mouse', 'session',
+    'conditioned_neuron', 'dt_si', 'step_time',
+    'reward_time', 'BCI_thresholds',
+]
+data = ddct.load_hdf5(folder, bci_keys, photostim_keys)
+
+BCI_thresholds = np.asarray(data['BCI_thresholds'], dtype=float)
+thr = BCI_thresholds[1, :]
+for i in range(1, thr.size):
+    if np.isnan(thr[i]):
+        thr[i] = thr[i - 1]
+if np.isnan(thr[0]) and np.any(np.isfinite(thr)):
+    thr[0] = thr[np.isfinite(thr)][0]
+BCI_thresholds[1, :] = thr
+
+AMP, stimDist = compute_amp_from_photostim(ex_mouse, data, folder)
+dt_si = data['dt_si']
+F = data['F']
+trl = F.shape[2]
+n_neurons = F.shape[1]
+n_frames = F.shape[0]
+tsta = np.arange(0, 12, dt_si)
+tsta = tsta - tsta[int(2 / dt_si)]
+lag_frames = int(round(ex_lag_sec / dt_si))
+
+data['step_time'] = parse_hdf5_array_string(data['step_time'], trl)
+data['reward_time'] = parse_hdf5_array_string(data['reward_time'], trl)
+
+rt = np.array([x[0] if len(x) > 0 else np.nan
+               for x in data['reward_time']], dtype=float)
+hit = np.isfinite(rt)
+rt_filled = rt.copy()
+rt_filled[~np.isfinite(rt_filled)] = 30.0
+rt_rpe = -compute_rpe(rt_filled, baseline=2.0, tau=tau_elig, fill_value=10.0)
+
+# Pair selection
+dw_list = []
+pair_cl_list = []
+pair_nt_list = []
+for gi in range(stimDist.shape[1]):
+    cl = np.where(
+        (stimDist[:, gi] < 10) &
+        (AMP[0][:, gi] > 0.1) &
+        (AMP[1][:, gi] > 0.1)
+    )[0]
+    if cl.size == 0:
+        continue
+    nontarg = np.where(
+        (stimDist[:, gi] > 30) & (stimDist[:, gi] < 1000)
+    )[0]
+    if nontarg.size == 0:
+        continue
+    dw_list.append(AMP[1][nontarg, gi] - AMP[0][nontarg, gi])
+    pair_cl_list.append(np.tile(cl, (len(nontarg), 1)))
+    pair_nt_list.append(nontarg)
+
+Y_T = np.nan_to_num(np.concatenate(dw_list), nan=0.0)
+all_nt = np.concatenate(pair_nt_list)
+n_pairs = len(Y_T)
+
+cl_weights = np.zeros((n_pairs, n_neurons))
+offset = 0
+for gi_idx in range(len(dw_list)):
+    n_nt = len(dw_list[gi_idx])
+    cl_arr = pair_cl_list[gi_idx]
+    for qi in range(n_nt):
+        cl_neurons = cl_arr[qi]
+        cl_weights[offset + qi, cl_neurons] = 1.0 / len(cl_neurons)
+    offset += n_nt
+
+# Compute lagged epoch activity for pre epoch only
+F_nan = F.copy()
+F_nan[np.isnan(F_nan)] = 0
+ts_pre = np.where((tsta > -10) & (tsta < 0))[0]
+t0e, t1e = ts_pre[0], ts_pre[-1]
+t0_lag = max(0, min(t0e + lag_frames, n_frames - 1))
+t1_lag = max(0, min(t1e + lag_frames, n_frames - 1))
+epoch_pre = np.nanmean(F_nan[t0e:t1e+1, :, :], axis=0)   # (N, trl)
+epoch_post = np.nanmean(F_nan[t0_lag:t1_lag+1, :, :], axis=0)
+
+# Baseline for dev2
+baseline_trials_arr = np.arange(min(N_BASELINE, trl))
+bl_post_mean = np.nanmean(epoch_post[:, baseline_trials_arr], axis=1)  # (N,)
+
+# Compute CC per window
+win_starts = np.arange(0, trl - WIN_SIZE + 1, WIN_STEP)
+n_wins = len(win_starts)
+
+cc_per_win = np.full((n_wins, n_pairs), np.nan)
+rpe_per_win = np.full(n_wins, np.nan)
+
+for wi, ws in enumerate(win_starts):
+    trial_idx = np.arange(ws, ws + WIN_SIZE)
+    rpe_per_win[wi] = np.nanmean(rt_rpe[trial_idx])
+    pre_act = cl_weights @ epoch_pre[:, trial_idx]
+    post_dev = epoch_post[all_nt, :][:, trial_idx] - bl_post_mean[all_nt, np.newaxis]
+    cc_per_win[wi, :] = np.sum(pre_act * post_dev, axis=1)
+
+# Split windows by RPE sign (within-session, relative to median)
+med_rpe = np.nanmedian(rpe_per_win)
+hi_rpe = rpe_per_win >= np.percentile(rpe_per_win,90)
+lo_rpe = rpe_per_win < np.percentile(rpe_per_win,10)
+
+# Average CC across windows in each group
+cc_hi = np.nanmean(cc_per_win[hi_rpe, :], axis=0)
+cc_lo = np.nanmean(cc_per_win[lo_rpe, :], axis=0)
+
+n_bins_10 = 5
+
+fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharex=True, sharey=True)
+
+for ax, cc, label, color in [
+    (axes[0], cc_hi, f'RPE > median ({np.sum(hi_rpe)} wins)', '#e74c3c'),
+    (axes[1], cc_lo, f'RPE < median ({np.sum(lo_rpe)} wins)', '#3498db'),
+]:
+    ok = np.isfinite(cc) & np.isfinite(Y_T)
+    cc_ok = cc[ok]
+    dw_ok = Y_T[ok]
+
+    if len(cc_ok) < n_bins_10:
+        continue
+
+    edges = np.percentile(cc_ok, np.linspace(0, 100, n_bins_10 + 1))
+    bx, by, be = [], [], []
+    for bi in range(n_bins_10):
+        if bi < n_bins_10 - 1:
+            mask = (cc_ok >= edges[bi]) & (cc_ok < edges[bi + 1])
+        else:
+            mask = (cc_ok >= edges[bi]) & (cc_ok <= edges[bi + 1])
+        if np.sum(mask) < 3:
+            continue
+        bx.append(np.mean(cc_ok[mask]))
+        by.append(np.mean(dw_ok[mask]))
+        be.append(np.std(dw_ok[mask]) / np.sqrt(np.sum(mask)))
+
+    bx, by, be = np.array(bx), np.array(by), np.array(be)
+    ax.errorbar(bx, by, yerr=be, fmt='o-', color=color,
+                capsize=5, linewidth=2, markersize=7)
+
+    # Fit line on raw data for stats
+    if np.std(cc_ok) > 0:
+        A = np.column_stack([np.ones(len(cc_ok)), cc_ok])
+        coeffs = np.linalg.lstsq(A, dw_ok, rcond=None)[0]
+        xr = np.array([bx[0], bx[-1]])
+        ax.plot(xr, coeffs[0] + coeffs[1] * xr, '--', color='k', linewidth=1.5)
+        r, p = spearmanr(cc_ok, dw_ok)
+        ax.set_title(f'{label}\nslope={coeffs[1]:.4f}, r={r:.3f}, p={p:.3f}',
+                     fontsize=12, fontweight='bold')
+
+    ax.axhline(0, color='k', ls='-', alpha=0.2)
+    ax.axvline(0, color='k', ls='--', alpha=0.2)
+    ax.set_xlabel('CC (dev2, pre epoch)')
+    ax.set_ylabel('dW')
+
+fig.suptitle(f'{ex_mouse} {ex_session} — dW vs CC split by RPE\n(dev2, pre epoch, lag={ex_lag_sec}s)',
+             fontsize=14, fontweight='bold', y=1.04)
+plt.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, 'fig15_dw_vs_cc_rpe_split.png'),
             dpi=150, bbox_inches='tight')
 plt.show()
-print("Binned figure saved.")
+print("Figure 15 saved.")

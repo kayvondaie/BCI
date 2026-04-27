@@ -3,8 +3,10 @@ from pathlib import Path
 import datetime
 import pandas as pd
 
-def counter():    
-    base_dir = Path(r'//allen/aind/scratch/BCI/2p-raw')
+_BASE_DIR_OVERRIDE = None
+
+def counter():
+    base_dir = Path(_BASE_DIR_OVERRIDE) if _BASE_DIR_OVERRIDE else Path(r'//allen/aind/scratch/BCI/2p-raw')
     mice = ["BCI88", "BCI93", "BCI102", "BCI103", "BCI104", "BCI105","BCI106","BCI107","BCI109"]
     cutoff_str = "010525"
     cutoff_date = datetime.datetime.strptime(cutoff_str, "%m%d%y").date()
@@ -54,13 +56,16 @@ def counter():
     pd.set_option("display.max_rows", None)  # Show all rows
     pd.set_option("display.max_columns", None)  # Show all columns
     print(df)
-    df.to_csv(r'//allen/aind/scratch/BCI/2p-raw'+"/session_data2.csv", index=False)
+    try:
+        df.to_csv(str(base_dir / "session_data2.csv"), index=False)
+    except OSError:
+        pass  # read-only filesystem (e.g. CodeOcean)
 
 
     return df
 
 def counter2(mice, cutoff_str, has_pophys = True):
-    base_dir = Path(r'//allen/aind/scratch/BCI/2p-raw')
+    base_dir = Path(_BASE_DIR_OVERRIDE) if _BASE_DIR_OVERRIDE else Path(r'//allen/aind/scratch/BCI/2p-raw')
     cutoff_date = datetime.datetime.strptime(cutoff_str, "%m%d%y").date()
 
     session_counts = {mouse: 0 for mouse in mice}
