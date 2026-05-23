@@ -72,11 +72,14 @@ print("=== CELL 1 done: example pair figures ===")
 #%% ============================================================================
 # CELL 2: Hebbian index didactic — HI time series + CC vs dW scatter
 # Source: hebbian_index_didactic.py (loads single session from network)
+#         hebbian_index_didactic_pairs.py (pair examples + correlation panels)
 # Output: hebbian_index_didactic_*.png/.svg
 #         hebbian_index_matrices_*.png/.svg
 #         hebbian_index_pooled_*.png/.svg
+#         figure_correlations_with_examples_*.png/.svg
 # ============================================================================
 exec(open(os.path.join(_THIS_DIR, 'hebbian_index_didactic.py')).read())
+exec(open(os.path.join(_THIS_DIR, 'hebbian_index_didactic_pairs.py')).read())
 print("=== CELL 2 done: hebbian index didactic figures ===")
 
 #%% ============================================================================

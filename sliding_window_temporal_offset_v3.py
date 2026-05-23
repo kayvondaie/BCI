@@ -584,24 +584,548 @@ mode_pvals = np.array(mode_pvals)
 mode_means = np.array(mode_means)
 neg_log_p = -np.log10(mode_pvals)
 
-fig, ax = plt.subplots(1, 1, figsize=(7, 4))
+from matplotlib.offsetbox import TextArea, HPacker, AnnotationBbox
 
-# Panel A: -log10(p)
-colors = ['k', 'k', 'k', 'k', 'k']
-bars = ax.bar(range(len(CC_MODES)), neg_log_p, color=colors, edgecolor='k',
-              linewidth=0.8)
-ax.axhline(-np.log10(0.05), color='r', ls='--', linewidth=1.5, label='p = 0.05')
-ax.set_xticks(range(len(CC_MODES)))
-ax.set_xticklabels(CC_MODES, rotation=25, ha='right', fontsize=10)
-ax.set_ylabel('-log10(p)')
-ax.set_title('RPE × Slope (Pre epoch)\nWilcoxon p-value per CC mode', fontweight='bold')
-ax.set_ylim((0,4))
-ax.legend(fontsize=9)
+# Colored math labels: pre-side blue, post-side red, operators black/gray.
+PRE_COLOR  = (0.0, 0.0, 1.0)
+POST_COLOR = (1.0, 0.0, 0.0)
+OP_COLOR   = '0.15'
+LABEL_SIZE = 13
 
-# Annotate bars with actual p-values
+LABEL_SEGMENTS = {
+    'dot_prod':       [(r'$r_{\mathrm{pre}}$',         PRE_COLOR),
+                       (r'$\times$',                   OP_COLOR),
+                       (r'$r_{\mathrm{post}}$',        POST_COLOR)],
+    'dev2':           [(r'$r_{\mathrm{pre}}$',         PRE_COLOR),
+                       (r'$\times$',                   OP_COLOR),
+                       (r'$\Delta r_{\mathrm{post}}$', POST_COLOR)],
+    'pre_dev_only':   [(r'$\Delta r_{\mathrm{pre}}$',  PRE_COLOR),
+                       (r'$\times$',                   OP_COLOR),
+                       (r'$r_{\mathrm{post}}$',        POST_COLOR)],
+    'pre_dev':        [(r'$\Delta r_{\mathrm{pre}}$',  PRE_COLOR),
+                       (r'$\times$',                   OP_COLOR),
+                       (r'$\Delta r_{\mathrm{post}}$', POST_COLOR)],
+    'phi_prime_dev2': [(r'$r_{\mathrm{pre}}$',         PRE_COLOR),
+                       (r'$\times$',                   OP_COLOR),
+                       (r'$\Delta r_{\mathrm{post}}$', POST_COLOR),
+                       [(r"$\cdot$",                   OP_COLOR),
+                        (r"$\phi'($",                  POST_COLOR),
+                        (r'$r_{\mathrm{post}}$',       POST_COLOR),
+                        (r'$)$',                       POST_COLOR)]],
+}
 
+# Sort ascending so the most significant bar ends up at the top of the y axis
+order        = np.argsort(neg_log_p)
+modes_sorted = [CC_MODES[i] for i in order]
+nlp_sorted   = neg_log_p[order]
+p_sorted     = mode_pvals[order]
 
-plt.tight_layout()
+SIG_COLOR    = '#2C7FB8'   # muted blue
+NONSIG_COLOR = '#C8CDD2'   # light gray
+bar_colors   = [SIG_COLOR if p < 0.05 else NONSIG_COLOR for p in p_sorted]
+
+fig, ax = plt.subplots(1, 1, figsize=(7.5, 4.5))
+ax.barh(range(len(CC_MODES)), nlp_sorted, color=bar_colors,
+        edgecolor='none', height=0.65)
+
+# p = 0.05 reference line
+thr = -np.log10(0.05)
+ax.axvline(thr, color='0.25', ls=(0, (2, 2)), linewidth=1.0, alpha=0.7)
+ax.text(thr, len(CC_MODES) - 0.35, ' p = 0.05',
+        ha='left', va='top', fontsize=10, color='0.25')
+
+# Per-bar p-value annotations
+xmax = max(np.nanmax(neg_log_p) * 1.28, 4.0)
+for i, (nlp, p) in enumerate(zip(nlp_sorted, p_sorted)):
+    txt = f'p = {p:.3f}' if p >= 1e-3 else f'p = {p:.1e}'
+    ax.text(nlp + xmax * 0.012, i, txt,
+            va='center', ha='left', fontsize=11, color='0.2')
+
+# Hide default y-tick labels; render colored math labels via HPacker
+ax.set_yticks(range(len(CC_MODES)))
+ax.set_yticklabels([''] * len(CC_MODES))
+for i, mode in enumerate(modes_sorted):
+    segs = LABEL_SEGMENTS.get(mode, [(mode, OP_COLOR)])
+    children = []
+    for s in segs:
+        if isinstance(s, list):
+            sub = [TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE))
+                   for (t, c) in s]
+            children.append(HPacker(children=sub, align='center', pad=0, sep=0))
+        else:
+            t, c = s
+            children.append(TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE)))
+    packer = HPacker(children=children, align='center', pad=0, sep=3)
+    ab = AnnotationBbox(packer, xy=(0, i), xybox=(-8, 0),
+                        xycoords=('axes fraction', 'data'),
+                        boxcoords='offset points',
+                        box_alignment=(1.0, 0.5),
+                        frameon=False, pad=0)
+    ax.add_artist(ab)
+
+ax.set_xlabel(r'$-\log_{10}(p)$', fontsize=12, labelpad=6)
+ax.set_title('RPE x slope, pre-epoch', fontsize=14, pad=10, loc='left')
+
+ax.set_xlim(0, xmax)
+ax.tick_params(axis='x', labelsize=11, color='0.4')
+ax.tick_params(axis='y', length=0)
+
+for s in ('top', 'right'):
+    ax.spines[s].set_visible(False)
+for s in ('left', 'bottom'):
+    ax.spines[s].set_color('0.4')
+
+ax.xaxis.grid(True, color='0.92', linewidth=0.8)
+ax.set_axisbelow(True)
+
+fig.subplots_adjust(left=0.22, right=0.95, top=0.88, bottom=0.14)
 plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_rpe_pre_bar.png'),
-            dpi=200, bbox_inches='tight')
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_rpe_pre_bar.svg'),
+            bbox_inches='tight')
+plt.show()
+
+#%% ============================================================================
+# CELL 10: Pre-epoch matrix — eligibility (rows) x 3rd factor (cols)
+# ============================================================================
+# Reuses LABEL_SEGMENTS / colors / offsetbox imports from CELL 9.
+# Each cell = signed -log10(p): sign(mean rho across sessions) * -log10(Wilcoxon p)
+# for the pre epoch only. RT column is sign-flipped because RT is anticorrelated
+# with performance (low RT = good).
+
+# Display order pairs Hit/ΔHit and Speed/ΔSpeed.
+# Mapping back to beh_names:
+#   hit_rate -> Hit       (raw hit rate)
+#   hit_RPE  -> ΔHit      (RPE on hit signal)
+#   RT       -> Speed     (raw RT, sign-flipped: low RT = high speed)
+#   RPE      -> ΔSpeed    (RPE on reaction time)
+DISPLAY_ORDER  = ['hit_rate', 'hit_RPE', 'RT', 'RPE']
+DISPLAY_LABELS = {'hit_rate': 'Hit',
+                  'hit_RPE':  r'$\Delta$Hit',
+                  'RT':       'Speed',
+                  'RPE':      'RPE'}
+SIGN_FLIP      = {'RT': -1}
+
+ei_pre = EPOCH_ORDER.index('pre')
+beh_idx_disp = [beh_names.index(b) for b in DISPLAY_ORDER]
+n_disp = len(DISPLAY_ORDER)
+
+mat_mean = np.full((len(CC_MODES), n_disp), np.nan)
+mat_p    = np.full((len(CC_MODES), n_disp), np.nan)
+for mi, mode in enumerate(CC_MODES):
+    for dj, bi in enumerate(beh_idx_disp):
+        vals = corr_slope[mode][:, bi, ei_pre]
+        v = vals[np.isfinite(vals)]
+        if len(v) < 3:
+            continue
+        mat_mean[mi, dj] = np.mean(v)
+        try:
+            _, p = wilcoxon(v)
+        except Exception:
+            p = 1.0
+        mat_p[mi, dj] = p
+
+# Signed -log10(p), with optional per-behavior sign flips
+beh_sign   = np.array([SIGN_FLIP.get(b, 1) for b in DISPLAY_ORDER], dtype=float)
+mat_signed = np.sign(mat_mean) * (-np.log10(np.clip(mat_p, 1e-300, 1.0)))
+mat_signed = mat_signed * beh_sign[np.newaxis, :]
+
+fig_m, ax_m = plt.subplots(1, 1, figsize=(7.0, 5.0))
+vmax = max(np.log10(1 / 0.05), np.nanmax(np.abs(mat_signed)))   # at least to p=0.05
+im = ax_m.imshow(mat_signed, cmap='coolwarm', vmin=-vmax, vmax=vmax,
+                 aspect='auto', interpolation='nearest')
+
+# Cell annotations: show signed -log10(p) with significance stars
+for mi in range(len(CC_MODES)):
+    for bj in range(n_disp):
+        v = mat_signed[mi, bj]
+        p = mat_p[mi, bj]
+        if np.isnan(v):
+            continue
+        if   p < 0.001: sig = '***'
+        elif p < 0.01:  sig = '**'
+        elif p < 0.05:  sig = '*'
+        else:           sig = ''
+        txt = f'{v:+.2f}'
+        if sig:
+            txt += f'\n{sig}'
+        ax_m.text(bj, mi, txt, ha='center', va='center', fontsize=11,
+                  fontweight='bold' if sig else 'normal', color='0.05')
+
+# Column labels: 3rd factors
+X_LABEL_COLOR = '#F99D20'
+ax_m.set_xticks(range(n_disp))
+ax_m.set_xticklabels([DISPLAY_LABELS[b] for b in DISPLAY_ORDER],
+                     fontsize=13, color=X_LABEL_COLOR, fontweight='bold')
+ax_m.set_xlabel('3rd factor', fontsize=14, labelpad=8,
+                color=X_LABEL_COLOR, fontweight='bold')
+
+# Row labels: colored math via HPacker (matches CELL 9)
+ax_m.set_yticks(range(len(CC_MODES)))
+ax_m.set_yticklabels([''] * len(CC_MODES))
+for i, mode in enumerate(CC_MODES):
+    segs = LABEL_SEGMENTS.get(mode, [(mode, OP_COLOR)])
+    children = []
+    for s in segs:
+        if isinstance(s, list):
+            sub = [TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE))
+                   for (t, c) in s]
+            children.append(HPacker(children=sub, align='center', pad=0, sep=0))
+        else:
+            t, c = s
+            children.append(TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE)))
+    packer = HPacker(children=children, align='center', pad=0, sep=3)
+    ab = AnnotationBbox(packer, xy=(0, i), xybox=(-10, 0),
+                        xycoords=('axes fraction', 'data'),
+                        boxcoords='offset points',
+                        box_alignment=(1.0, 0.5),
+                        frameon=False, pad=0)
+    ax_m.add_artist(ab)
+
+ax_m.tick_params(axis='y', length=0)
+ax_m.tick_params(axis='x', length=0)
+for s in ('top', 'right', 'left', 'bottom'):
+    ax_m.spines[s].set_visible(False)
+
+cbar = plt.colorbar(im, ax=ax_m, shrink=0.75, pad=0.03)
+cbar.set_label(r'sign$(\rho)\cdot -\log_{10}(p)$', fontsize=11)
+cbar.ax.tick_params(labelsize=10)
+cbar.outline.set_visible(False)
+# Mark p=0.05 thresholds on the colorbar
+for thr in (-np.log10(0.05), np.log10(0.05)):
+    cbar.ax.axhline(thr, color='k', linewidth=0.8, alpha=0.7)
+
+ax_m.set_title('Pre epoch: eligibility x 3rd factor (RT sign-flipped)',
+               fontsize=14, pad=12, loc='left')
+
+fig_m.subplots_adjust(left=0.28, right=0.92, top=0.86, bottom=0.14)
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_pre_matrix.png'),
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_pre_matrix.svg'),
+            bbox_inches='tight')
+plt.show()
+
+#%% ============================================================================
+# CELL 11: Nested matrix — eligibility x (3rd factor, epoch)
+# ============================================================================
+# Same outer layout as CELL 10, but each outer cell expands into a 1xN_epochs
+# strip so the epoch dimension is shown inline. Reuses DISPLAY_ORDER / SIGN_FLIP
+# / LABEL_SEGMENTS from CELL 10.
+
+EPOCH_DISP_LABELS = ['pre', 'go', 'late', 'rew']  # short forms for compactness
+n_ep_disp = len(EPOCH_ORDER)
+n_total_cols = n_disp * n_ep_disp
+
+mat3_signed = np.full((len(CC_MODES), n_total_cols), np.nan)
+mat3_p      = np.full((len(CC_MODES), n_total_cols), np.nan)
+for mi, mode in enumerate(CC_MODES):
+    for dj, bi in enumerate(beh_idx_disp):
+        sign = SIGN_FLIP.get(DISPLAY_ORDER[dj], 1)
+        for ek in range(n_ep_disp):
+            vals = corr_slope[mode][:, bi, ek]
+            v = vals[np.isfinite(vals)]
+            if len(v) < 3:
+                continue
+            m = np.mean(v)
+            try:
+                _, p = wilcoxon(v)
+            except Exception:
+                p = 1.0
+            col = dj * n_ep_disp + ek
+            mat3_signed[mi, col] = (np.sign(m) *
+                                    -np.log10(max(p, 1e-300)) * sign)
+            mat3_p[mi, col] = p
+
+vmax = max(-np.log10(0.05), np.nanmax(np.abs(mat3_signed)))
+
+fig_n, ax_n = plt.subplots(1, 1, figsize=(8, 2))
+im = ax_n.imshow(mat3_signed, cmap='bwr', vmin=-vmax, vmax=vmax,
+                 aspect='auto', interpolation='nearest')
+
+# Star-only annotations (numbers would be too cramped at 16 columns)
+for mi in range(len(CC_MODES)):
+    for col in range(n_total_cols):
+        p = mat3_p[mi, col]
+        if np.isnan(p):
+            continue
+        if   p < 0.001: sig = '***'
+        elif p < 0.01:  sig = '**'
+        elif p < 0.05:  sig = '*'
+        else:           sig = ''
+        if sig:
+            ax_n.text(col, mi, sig, ha='center', va='center',
+                      fontsize=11, fontweight='bold', color='0.05')
+
+# Black borders between 3rd-factor groups
+for k in range(1, n_disp):
+    ax_n.axvline(k * n_ep_disp - 0.5, color='k', linewidth=1.5)
+
+# Bottom: epoch labels under each column
+ax_n.set_xticks(np.arange(n_total_cols))
+ax_n.set_xticklabels(EPOCH_DISP_LABELS * n_disp, fontsize=9)
+
+# Top: 3rd-factor labels centered over each group of 4 epochs
+ax_top = ax_n.secondary_xaxis('top')
+group_centers = [dj * n_ep_disp + (n_ep_disp - 1) / 2 for dj in range(n_disp)]
+ax_top.set_xticks(group_centers)
+ax_top.set_xticklabels([DISPLAY_LABELS[b] for b in DISPLAY_ORDER],
+                       fontsize=13, color='#F99D20', fontweight='bold')
+ax_top.tick_params(axis='x', length=0)
+for s in ('top', 'right', 'left', 'bottom'):
+    ax_top.spines[s].set_visible(False)
+
+# Row labels: colored math (matches CELL 9 / 10)
+ax_n.set_yticks(range(len(CC_MODES)))
+ax_n.set_yticklabels([''] * len(CC_MODES))
+for i, mode in enumerate(CC_MODES):
+    segs = LABEL_SEGMENTS.get(mode, [(mode, OP_COLOR)])
+    children = []
+    for s in segs:
+        if isinstance(s, list):
+            sub = [TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE))
+                   for (t, c) in s]
+            children.append(HPacker(children=sub, align='center', pad=0, sep=0))
+        else:
+            t, c = s
+            children.append(TextArea(t, textprops=dict(color=c, fontsize=LABEL_SIZE)))
+    packer = HPacker(children=children, align='center', pad=0, sep=3)
+    ab = AnnotationBbox(packer, xy=(0, i), xybox=(-10, 0),
+                        xycoords=('axes fraction', 'data'),
+                        boxcoords='offset points',
+                        box_alignment=(1.0, 0.5),
+                        frameon=False, pad=0)
+    ax_n.add_artist(ab)
+
+ax_n.tick_params(axis='y', length=0)
+ax_n.tick_params(axis='x', length=0)
+for s in ('top', 'right', 'left', 'bottom'):
+    ax_n.spines[s].set_visible(False)
+
+cbar = plt.colorbar(im, ax=ax_n, shrink=0.75, pad=0.03)
+cbar.set_label(r'sign$(\rho)\cdot -\log_{10}(p)$', fontsize=11)
+cbar.ax.tick_params(labelsize=10)
+cbar.outline.set_visible(False)
+for thr in (-np.log10(0.05), np.log10(0.05)):
+    cbar.ax.axhline(thr, color='k', linewidth=0.8, alpha=0.7)
+
+fig_n.subplots_adjust(left=0.22, right=0.88, top=0.86, bottom=0.14)
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_nested_matrix.png'),
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_nested_matrix.svg'),
+            bbox_inches='tight')
+plt.show()
+
+#%% ============================================================================
+# CELL 12: Nested matrix — (eligibility outer, 3rd factor inner) x epoch
+# ============================================================================
+# y = eligibility (outer, 5 groups of 4 rows) with the four 3rd factors expanded
+# within each group; x = epoch. Eligibility colored-math labels on the far left,
+# 3rd factor (orange bold) labels repeated to the immediate left of each row.
+
+EPOCH_FULL_LABELS = ['Pre', 'Go cue', 'Late', 'Reward']
+
+n_modes_t = len(CC_MODES)
+n_cols_t  = len(EPOCH_ORDER)
+n_total_rows_t = n_modes_t * n_disp   # 5 eligibilities x 4 factors = 20
+
+mat_t_signed = np.full((n_total_rows_t, n_cols_t), np.nan)
+mat_t_p      = np.full((n_total_rows_t, n_cols_t), np.nan)
+for mi, mode in enumerate(CC_MODES):
+    for dj, bi in enumerate(beh_idx_disp):
+        sign = SIGN_FLIP.get(DISPLAY_ORDER[dj], 1)
+        for ek in range(n_cols_t):
+            vals = corr_slope[mode][:, bi, ek]
+            v = vals[np.isfinite(vals)]
+            if len(v) < 3:
+                continue
+            m = np.mean(v)
+            try:
+                _, p = wilcoxon(v)
+            except Exception:
+                p = 1.0
+            row = mi * n_disp + dj
+            mat_t_signed[row, ek] = (np.sign(m) *
+                                     -np.log10(max(p, 1e-300)) * sign)
+            mat_t_p[row, ek] = p
+
+vmax_t = max(-np.log10(0.05), np.nanmax(np.abs(mat_t_signed)))
+
+fig_t, ax_t = plt.subplots(1, 1, figsize=(5.0, 10.5))
+im_t = ax_t.imshow(mat_t_signed, cmap='coolwarm', vmin=-vmax_t, vmax=vmax_t,
+                   aspect='auto', interpolation='nearest')
+
+# Stars
+for row in range(n_total_rows_t):
+    for ek in range(n_cols_t):
+        p = mat_t_p[row, ek]
+        if np.isnan(p):
+            continue
+        if   p < 0.001: sig = '***'
+        elif p < 0.01:  sig = '**'
+        elif p < 0.05:  sig = '*'
+        else:           sig = ''
+        if sig:
+            ax_t.text(ek, row, sig, ha='center', va='center',
+                      fontsize=11, fontweight='bold', color='0.05')
+
+# Black borders between eligibility groups
+for k in range(1, n_modes_t):
+    ax_t.axhline(k * n_disp - 0.5, color='k', linewidth=1.5)
+
+# Far left: colored-math eligibility labels, centered over each group of 4 rows
+group_centers_t = [mi * n_disp + (n_disp - 1) / 2 for mi in range(n_modes_t)]
+for mi, mode in enumerate(CC_MODES):
+    segs = LABEL_SEGMENTS.get(mode, [(mode, OP_COLOR)])
+    children = []
+    for s in segs:
+        if isinstance(s, list):
+            sub = [TextArea(t, textprops=dict(color=c, fontsize=12))
+                   for (t, c) in s]
+            children.append(HPacker(children=sub, align='center', pad=0, sep=0))
+        else:
+            t, c = s
+            children.append(TextArea(t, textprops=dict(color=c, fontsize=12)))
+    packer = HPacker(children=children, align='center', pad=0, sep=3)
+    ab = AnnotationBbox(packer, xy=(0, group_centers_t[mi]), xybox=(-58, 0),
+                        xycoords=('axes fraction', 'data'),
+                        boxcoords='offset points',
+                        box_alignment=(1.0, 0.5),
+                        frameon=False, pad=0)
+    ax_t.add_artist(ab)
+
+# Left ticks: 3rd factor labels (orange bold) repeating, one per row
+ax_t.set_yticks(np.arange(n_total_rows_t))
+ax_t.set_yticklabels([DISPLAY_LABELS[DISPLAY_ORDER[r % n_disp]]
+                      for r in range(n_total_rows_t)],
+                     fontsize=10, color='#F99D20', fontweight='bold')
+
+# Bottom: epoch labels
+ax_t.set_xticks(range(n_cols_t))
+ax_t.set_xticklabels(EPOCH_FULL_LABELS, fontsize=13)
+
+ax_t.tick_params(axis='y', length=0)
+ax_t.tick_params(axis='x', length=0)
+for s in ('top', 'right', 'left', 'bottom'):
+    ax_t.spines[s].set_visible(False)
+
+cbar_t = plt.colorbar(im_t, ax=ax_t, shrink=0.6, pad=0.03)
+cbar_t.set_label(r'sign$(\rho)\cdot -\log_{10}(p)$', fontsize=11)
+cbar_t.ax.tick_params(labelsize=10)
+cbar_t.outline.set_visible(False)
+for thr in (-np.log10(0.05), np.log10(0.05)):
+    cbar_t.ax.axhline(thr, color='k', linewidth=0.8, alpha=0.7)
+
+fig_t.subplots_adjust(left=0.42, right=0.86, top=0.96, bottom=0.06)
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_nested_matrix_t.png'),
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_nested_matrix_t.svg'),
+            bbox_inches='tight')
+plt.show()
+
+#%% ============================================================================
+# CELL 13: Cleaned 1x5 panel row — behavior x epoch per eligibility
+# ============================================================================
+# Cleaner version of the original 2x5 figure (CELL 7): drops the intercept row,
+# shows signed -log10(p) instead of mean rho, only the first panel keeps the
+# 3rd-factor y-tick labels, only the last panel keeps the colorbar.
+
+EPOCH_AXIS_LABELS = ['Pre', 'Go cue', 'Late', 'Reward']
+
+# Per-mode (n_disp x n_epochs) matrices of signed -log10(p) and p
+sig_mats = {}
+for mode in CC_MODES:
+    mat_signed = np.full((n_disp, n_epochs), np.nan)
+    mat_p_loc  = np.full((n_disp, n_epochs), np.nan)
+    for dj, bi in enumerate(beh_idx_disp):
+        sign = SIGN_FLIP.get(DISPLAY_ORDER[dj], 1)
+        for ei in range(n_epochs):
+            vals = corr_slope[mode][:, bi, ei]
+            v = vals[np.isfinite(vals)]
+            if len(v) < 3:
+                continue
+            m = np.mean(v)
+            try:
+                _, p = wilcoxon(v)
+            except Exception:
+                p = 1.0
+            mat_signed[dj, ei] = (np.sign(m) *
+                                  -np.log10(max(p, 1e-300)) * sign)
+            mat_p_loc[dj, ei] = p
+    sig_mats[mode] = (mat_signed, mat_p_loc)
+
+# Shared color scale
+all_vals = np.concatenate([m[0].flatten() for m in sig_mats.values()])
+vmax_p   = max(-np.log10(0.05), np.nanmax(np.abs(all_vals)))
+
+fig13, axes13 = plt.subplots(1, len(CC_MODES),
+                             figsize=(2.4 * len(CC_MODES), 3.3),
+                             squeeze=False)
+axes13 = axes13[0]
+
+im13 = None
+for col, mode in enumerate(CC_MODES):
+    ax = axes13[col]
+    mat_signed, mat_p_loc = sig_mats[mode]
+    im13 = ax.imshow(mat_signed, cmap='coolwarm',
+                     vmin=-vmax_p, vmax=vmax_p,
+                     aspect='auto', interpolation='nearest')
+
+    # Stars
+    for dj in range(n_disp):
+        for ei in range(n_epochs):
+            p = mat_p_loc[dj, ei]
+            if np.isnan(p):
+                continue
+            if   p < 0.001: sig = '***'
+            elif p < 0.01:  sig = '**'
+            elif p < 0.05:  sig = '*'
+            else:           sig = ''
+            if sig:
+                ax.text(ei, dj, sig, ha='center', va='center', fontsize=11,
+                        fontweight='bold', color='0.05')
+
+    ax.set_xticks(range(n_epochs))
+    ax.set_xticklabels(EPOCH_AXIS_LABELS, rotation=30, ha='right', fontsize=10)
+    ax.set_yticks(range(n_disp))
+    if col == 0:
+        ax.set_yticklabels([DISPLAY_LABELS[b] for b in DISPLAY_ORDER],
+                           fontsize=12, color='#F99D20', fontweight='bold')
+    else:
+        ax.set_yticklabels([''] * n_disp)
+    ax.tick_params(axis='both', length=0)
+    for s in ('top', 'right', 'left', 'bottom'):
+        ax.spines[s].set_visible(False)
+
+    # Title: eligibility colored math
+    segs = LABEL_SEGMENTS.get(mode, [(mode, OP_COLOR)])
+    children = []
+    for s in segs:
+        if isinstance(s, list):
+            sub = [TextArea(t, textprops=dict(color=c, fontsize=11))
+                   for (t, c) in s]
+            children.append(HPacker(children=sub, align='center', pad=0, sep=0))
+        else:
+            t, c = s
+            children.append(TextArea(t, textprops=dict(color=c, fontsize=11)))
+    packer = HPacker(children=children, align='center', pad=0, sep=3)
+    ab = AnnotationBbox(packer, xy=(0.5, 1), xybox=(0, 10),
+                        xycoords='axes fraction',
+                        boxcoords='offset points',
+                        box_alignment=(0.5, 0.0),
+                        frameon=False, pad=0)
+    ax.add_artist(ab)
+
+# Colorbar on the last panel only
+cbar13 = fig13.colorbar(im13, ax=axes13[-1], shrink=0.85, pad=0.05)
+cbar13.set_label(r'sign$(\rho)\cdot -\log_{10}(p)$', fontsize=10)
+cbar13.ax.tick_params(labelsize=9)
+cbar13.outline.set_visible(False)
+for thr in (-np.log10(0.05), np.log10(0.05)):
+    cbar13.ax.axhline(thr, color='k', linewidth=0.7, alpha=0.7)
+
+fig13.subplots_adjust(left=0.10, right=0.92, top=0.80, bottom=0.20, wspace=0.15)
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_panel_row.png'),
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'sliding_window_v3_panel_row.svg'),
+            bbox_inches='tight')
 plt.show()

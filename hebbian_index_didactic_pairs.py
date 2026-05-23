@@ -261,6 +261,96 @@ plt.show()
 print(f"Saved to {PANEL_DIR}/{fname}.png/.svg")
 
 #%% ============================================================================
+# CELL 3b: HI + RPE overlaid, first 40 trials (slide-friendly)
+# ============================================================================
+# Two identical-axis figures (with and without RPE) so the RPE trace can be
+# faded in over the HI plot in PowerPoint. RPE is per-trial (matches the (1,1)
+# panel of the 2x4 figure in CELL 12); HI is only defined per sliding window.
+TRIAL_CUTOFF = 40
+sel_win = win_centers < TRIAL_CUTOFF
+n_trials_plot = min(TRIAL_CUTOFF, trl)
+
+C_HI       = 'k'
+C_HI_POS   = (1.0, 0.0, 0.0)   # post-strengthen (red)
+C_HI_NEG   = (0.0, 0.0, 1.0)   # post-weaken (blue)
+C_RPE      = '#F99D20'         # matches RPE_COLOR in the 2x4 figure
+
+# Pre-compute fixed y-limits so the two plots have identical axes.
+hi_x     = win_centers[sel_win].astype(float)
+hi_vals  = hi_slope[sel_win]
+rpe_vals = rt_rpe[:n_trials_plot]
+hi_pad   = 0.12 * (np.nanmax(hi_vals)  - np.nanmin(hi_vals))
+rpe_pad  = 0.12 * (np.nanmax(rpe_vals) - np.nanmin(rpe_vals))
+ylim_hi  = (min(np.nanmin(hi_vals) - hi_pad, -hi_pad),
+            max(np.nanmax(hi_vals) + hi_pad,  hi_pad))
+ylim_rpe = (np.nanmin(rpe_vals) - rpe_pad, np.nanmax(rpe_vals) + rpe_pad)
+
+# Fixed plot-box geometry so the two figures align perfectly for the fade.
+FIG_SZ        = (10.0, 4.8)
+MARGIN_LRTB   = dict(left=0.13, right=0.88, top=0.84, bottom=0.22)
+TITLE_FONTSZ  = 22
+LBL_FONTSZ    = 20
+TICK_FONTSZ   = 16
+
+def _make_overlay(show_rpe):
+    fig, ax_hi = plt.subplots(1, 1, figsize=FIG_SZ)
+    ax_rpe = ax_hi.twinx()
+
+    # HI: thick line + white-edged markers
+    ax_hi.plot(hi_x, hi_vals, '-', color=C_HI, linewidth=2.6, zorder=3)
+    ax_hi.plot(hi_x, hi_vals, 'o', color=C_HI, markersize=11,
+               markeredgecolor='white', markeredgewidth=1.5, zorder=4)
+
+    if show_rpe:
+        ax_rpe.plot(np.arange(n_trials_plot), rpe_vals,
+                    color=C_RPE, linewidth=3.0, alpha=0.95, zorder=2)
+
+    ax_hi.axhline(0, color='k', ls=(0, (5, 4)), alpha=0.45, linewidth=1.1)
+
+    # Left axis (HI) — always shown
+    ax_hi.set_xlabel('Trial', fontsize=LBL_FONTSZ, labelpad=6)
+    ax_hi.set_ylabel('Hebbian index', color=C_HI,
+                     fontsize=LBL_FONTSZ, labelpad=6)
+    ax_hi.tick_params(axis='y', colors=C_HI, labelsize=TICK_FONTSZ)
+    ax_hi.tick_params(axis='x', labelsize=TICK_FONTSZ)
+    ax_hi.set_ylim(ylim_hi)
+    ax_hi.set_xlim(0, TRIAL_CUTOFF)
+    ax_hi.spines['top'].set_visible(False)
+    ax_hi.spines['left'].set_color(C_HI)
+
+    # Right axis (RPE) — same limits in both versions; visibility toggles
+    ax_rpe.set_ylim(ylim_rpe)
+    ax_rpe.spines['top'].set_visible(False)
+    if show_rpe:
+        ax_rpe.set_ylabel('RPE', color=C_RPE,
+                          fontsize=LBL_FONTSZ, labelpad=6)
+        ax_rpe.tick_params(axis='y', colors=C_RPE, labelsize=TICK_FONTSZ)
+        ax_rpe.spines['right'].set_color(C_RPE)
+    else:
+        ax_rpe.set_ylabel('')
+        ax_rpe.tick_params(axis='y', length=0, labelright=False)
+        ax_rpe.spines['right'].set_visible(False)
+
+    ax_hi.yaxis.grid(True, color='0.92', linewidth=0.8)
+    ax_hi.set_axisbelow(True)
+
+    ax_hi.set_title(f'{mouse} {session}  —  first {TRIAL_CUTOFF} trials',
+                    fontsize=TITLE_FONTSZ, pad=14, loc='left')
+
+    # Explicit layout so both versions have identical plot boxes
+    fig.subplots_adjust(**MARGIN_LRTB)
+
+    suffix = 'with_rpe' if show_rpe else 'no_rpe'
+    fname = f'hebbian_index_rpe_overlay_first{TRIAL_CUTOFF}_{suffix}_{mouse}_{session}'
+    fig.savefig(os.path.join(PANEL_DIR, f'{fname}.png'), dpi=300)
+    fig.savefig(os.path.join(PANEL_DIR, f'{fname}.svg'))
+    plt.show()
+    print(f"Saved {fname}.png/.svg")
+
+_make_overlay(show_rpe=False)
+_make_overlay(show_rpe=True)
+
+#%% ============================================================================
 # CELL 4: CC dev2 matrices (for exploration, separate figure)
 # ============================================================================
 CC_mats = {}

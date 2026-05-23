@@ -421,3 +421,82 @@ with open(report_path, 'w', encoding='utf-8') as f:
                 f"{s['p_test']:9.4f} {sig:>4s}\n")
 
 print(f"Report saved to: {report_path}")
+
+#%% ============================================================================
+# CELL 8: Hierarchical bootstrap of the binned predicted-vs-actual dW plot
+# ============================================================================
+# Resample mice with replacement, then within each sampled mouse resample its
+# sessions with replacement, pool all pair-level (Y_pred, Y_test), and bin by
+# Y_pred percentile. Repeat N_BOOT times and plot median bin centers/heights
+# with 95% CIs across repeats.
+
+N_BOOT = 100
+N_BINS_BOOT = 5
+BOOT_SEED = 42
+rng_boot = np.random.default_rng(BOOT_SEED)
+
+# Group session indices by mouse
+sessions_by_mouse = {}
+for si, s in enumerate(all_results):
+    sessions_by_mouse.setdefault(s['mouse'], []).append(si)
+mice_unique = sorted(sessions_by_mouse.keys())
+print(f"Hierarchical bootstrap: {len(mice_unique)} mice, "
+      f"{len(all_results)} sessions, {N_BOOT} repeats")
+
+bx_boot = np.full((N_BOOT, N_BINS_BOOT), np.nan)
+by_boot = np.full((N_BOOT, N_BINS_BOOT), np.nan)
+
+for b in range(N_BOOT):
+    mice_b = rng_boot.choice(mice_unique, size=len(mice_unique), replace=True)
+    pool_pred, pool_test = [], []
+    for m in mice_b:
+        sess_idx = sessions_by_mouse[m]
+        sess_b = rng_boot.choice(sess_idx, size=len(sess_idx), replace=True)
+        for si in sess_b:
+            pool_pred.append(all_results[si]['Y_pred_all'])
+            pool_test.append(all_results[si]['Y_test_all'])
+    Yp = np.concatenate(pool_pred)
+    Yt = np.concatenate(pool_test)
+
+    edges_b = np.percentile(Yp, np.linspace(0, 100, N_BINS_BOOT + 1))
+    for bi in range(N_BINS_BOOT):
+        if bi < N_BINS_BOOT - 1:
+            mask = (Yp >= edges_b[bi]) & (Yp < edges_b[bi + 1])
+        else:
+            mask = (Yp >= edges_b[bi]) & (Yp <= edges_b[bi + 1])
+        if np.sum(mask) >= 3:
+            bx_boot[b, bi] = np.mean(Yp[mask])
+            by_boot[b, bi] = np.mean(Yt[mask])
+
+bx_med = np.nanmedian(bx_boot, axis=0)
+by_med = np.nanmedian(by_boot, axis=0)
+bx_lo  = np.nanpercentile(bx_boot,  2.5, axis=0)
+bx_hi  = np.nanpercentile(bx_boot, 97.5, axis=0)
+by_lo  = np.nanpercentile(by_boot,  2.5, axis=0)
+by_hi  = np.nanpercentile(by_boot, 97.5, axis=0)
+
+fig_b, ax_b = plt.subplots(1, 1, figsize=(7.0, 5.5))
+yerr = np.vstack([by_med - by_lo, by_hi - by_med])
+# mean_bin_plot style: errorbar with marker='o', no caps, line connecting
+ax_b.errorbar(bx_med, by_med, yerr=yerr,
+              marker='o', markersize=9, color='k', markerfacecolor='k',
+              linewidth=2.2)
+ax_b.axhline(0, color='k', ls='--', alpha=0.3, linewidth=1)
+
+ax_b.set_xlabel(r'Predicted $\Delta W$', fontsize=20, labelpad=8)
+ax_b.set_ylabel(r'Actual $\Delta W$',    fontsize=20, labelpad=8)
+ax_b.tick_params(axis='both', labelsize=15, width=1.3)
+ax_b.spines['top'].set_visible(False)
+ax_b.spines['right'].set_visible(False)
+ax_b.spines['left'].set_linewidth(1.5)
+ax_b.spines['bottom'].set_linewidth(1.5)
+fig_b.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, 'three_factor_binned_hierboot.png'),
+            dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(RESULTS_DIR, 'three_factor_binned_hierboot.svg'),
+            bbox_inches='tight')
+plt.show()
+
+print(f"Bin centers (median): {bx_med}")
+print(f"Bin heights (median): {by_med}")
+print(f"Saved: three_factor_binned_hierboot.png/.svg")
