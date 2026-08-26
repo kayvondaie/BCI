@@ -1,0 +1,41 @@
+{
+	"version": 1,
+	"base_image": "codeocean/jupyterlab:3.6.1-miniconda4.12.0-python3.9-ubuntu20.04",
+	"options": {
+		"registry_host_arg": true,
+		"git_ask_pass": true,
+		"mount_secrets": true
+	},
+	"installers": {
+		"pip": {
+			"packages": [
+				{
+					"name": "matplotlib",
+					"version": "3.9.2"
+				},
+				{
+					"name": "numpy",
+					"version": "2.0.2"
+				},
+				{
+					"name": "scikit-learn",
+					"version": "1.5.2"
+				},
+				{
+					"name": "scipy",
+					"version": "1.13.1"
+				},
+				{
+					"name": "statsmodels",
+					"version": "0.14.4"
+				},
+				{
+					"name": "torch",
+					"version": "2.5.1"
+				}
+			],
+			"options": {},
+			"pre_install_options": {}
+		}
+	}
+}

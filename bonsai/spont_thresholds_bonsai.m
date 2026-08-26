@@ -88,11 +88,15 @@ for ti = 1:length(new_thr)
     end
 end
 
-%% ---- Plot: hit rate ----
+%% ---- Plot: median time to reward (white out sub-100% HR) ----
 figure(9495); clf
 
-imagesc(hit_rate, [0 1]); hold on;
-colorbar
+median_T_display = median_T;
+median_T_display(hit_rate < 1) = NaN;
+
+im = imagesc(median_T_display); hold on;
+set(im, 'AlphaData', ~isnan(median_T_display));
+set(gca, 'Color', 'white');
 colormap(jet)
 y_inds = 1:5:20;
 y_values = round(new_thr(1:5:end));
@@ -102,14 +106,26 @@ x_inds = 1:5:20;
 x_values = round((new_slp(1:5:end))*100)/100;
 xticks(x_inds);
 xticklabels(x_values);
-currentx = min(find(new_slp>=BCI_threshold(2)));
-currenty = min(find(new_thr>=BCI_threshold(1)));
-plot(currentx,currenty,'co','markersize',10)
+currentx = min(find(new_slp >= BCI_threshold(2)));
+currenty = min(find(new_thr >= BCI_threshold(1)));
+plot(currentx, currenty, 'co', 'markersize', 10)
+
+% Dot: FU at peak of trace, FL giving median_T closest to 5s
+peak_val = max(h);
+[~, peak_col] = min(abs(new_slp - peak_val));
+col_data = median_T_display(:, peak_col);
+valid_rows = find(~isnan(col_data));
+if ~isempty(valid_rows)
+    [~, best] = min(abs(col_data(valid_rows) - 5));
+    target_row = valid_rows(best);
+    plot(peak_col, target_row, 'k.', 'MarkerSize', 20);
+end
+
 xlabel('Upper threshold (FU)')
 ylabel('Lower threshold (FL)')
 cb = colorbar;
-ylabel(cb,'Hit rate')
-title(sprintf('Hit rate (integral threshold = %.2f V·s, T = %ds)', integral_hit, response_T))
+ylabel(cb, 'Median time to reward (s)')
+title(sprintf('Time to reward — integral = %.2f V·s, T = %ds', integral_hit, response_T))
 
 % Interactive selection
 a = ginput(1); a = round(a);

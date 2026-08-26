@@ -1,0 +1,160 @@
+{
+  "name": "AindTelekinesis",
+  "description": "",
+  "task_parameters": {
+    "rng_seed": null,
+    "aind_behavior_services_pkg_version": "0.13.6",
+    "environment": {
+      "block_statistics": [
+        {
+          "mode": "BlockGenerator",
+          "block_size": {
+            "family": "Scalar",
+            "distribution_parameters": {
+              "family": "Scalar",
+              "value": 1000.0
+            },
+            "truncation_parameters": null,
+            "scaling_parameters": null
+          },
+          "trial_statistics": {
+            "inter_trial_interval": {
+              "family": "Scalar",
+              "distribution_parameters": {
+                "family": "Scalar",
+                "value": 3.0
+              },
+              "truncation_parameters": null,
+              "scaling_parameters": null
+            },
+            "quiescence_period": {
+              "duration": {
+                "family": "Scalar",
+                "distribution_parameters": {
+                  "family": "Scalar",
+                  "value": 0.2
+                },
+                "truncation_parameters": null,
+                "scaling_parameters": null
+              },
+              "action_threshold": 0.05,
+              "has_cue": false
+            },
+            "response_period": {
+              "duration": {
+                "family": "Scalar",
+                "distribution_parameters": {
+                  "family": "Scalar",
+                  "value": 10.0
+                },
+                "truncation_parameters": null,
+                "scaling_parameters": null
+              },
+              "has_cue": true,
+              "action": {
+                "reward_probability": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 1.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "reward_amount": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 35.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "reward_delay": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 0.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "action_duration": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 0.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "upper_action_threshold": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 0.2
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "lower_action_threshold": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 0.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "is_operant": true,
+                "time_to_collect": {
+                  "family": "Scalar",
+                  "distribution_parameters": {
+                    "family": "Scalar",
+                    "value": 2.0
+                  },
+                  "truncation_parameters": null,
+                  "scaling_parameters": null
+                },
+                "continuous_feedback": {
+                  "continuous_feedback_mode": "Manipulator",
+                  "converter_lut_input": [
+                    0.0,
+                    1.0
+                  ],
+                  "converter_lut_output": [
+                    -7.0,
+                    0
+                  ]
+                }
+              }
+            },
+            "action_source_0": {
+              "action_source": "BehaviorAnalogInput",
+              "channel": 0
+            },
+            "action_source_1": null,
+            "sampler": {
+              "sampler_type": "1D",
+              "min_from": 0.0,
+              "max_from": 3.3,
+              "min_to": 0.0,
+              "max_to": 1.0
+            }
+          }
+        }
+      ],
+      "shuffle": false,
+      "repeat_count": 0
+    },
+    "operation_control": {
+      "action_luts": {},
+      "spout": {
+        "default_retraction_offset": -7.0,
+        "enabled": true
+      }
+    }
+  },
+  "version": "0.4.0-rc5",
+  "stage_name": null
+}

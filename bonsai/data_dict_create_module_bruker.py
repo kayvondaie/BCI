@@ -14,6 +14,44 @@ import glob
 import pickle
 
 keep_suite2p_cells = 1;
+
+
+def _cn_pixel_position(siHeader):
+    """Pixel position of the integration ROI that ScanImage was conditioning on.
+    Same math as find_conditioned_neurons() but standalone so it can run before
+    stat is filtered by iscell.
+    """
+    cnName = siHeader['metadata']['hIntegrationRoiManager']['outputChannelsRoiNames']
+    g = [i for i in range(len(cnName)) if cnName.startswith("'", i)]
+    cnName = cnName[g[0] + 1:g[1]]
+
+    rois = siHeader['metadata']['json']['RoiGroups']['integrationRoiGroup']['rois']
+    if isinstance(rois, dict):
+        rois = [rois]
+    cn_idx = [i for i, r in enumerate(rois) if r['name'] == cnName][0]
+    cnPos = rois[cn_idx]['scanfields']['centerXY']
+
+    deg = siHeader['metadata']['hRoiManager']['imagingFovDeg']
+    g = [i for i in range(len(deg)) if deg.startswith(" ", i)]
+    gg = [i for i in range(len(deg)) if deg.startswith(";", i)]
+    g = np.sort(g + gg)
+    num = [float(deg[g[i] + 1:g[i + 1]]) for i in range(len(g) - 1)]
+    dim = (int(siHeader['metadata']['hRoiManager']['linesPerFrame']),
+           int(siHeader['metadata']['hRoiManager']['pixelsPerLine']))
+    degRange = (num[4] - num[0], num[1] - num[5])
+    pixPerDeg = np.array(dim) / np.array(degRange)
+    return np.array(np.array(cnPos) - [num[-1], num[0]]) * pixPerDeg
+
+
+def _rois_near_cn(stat, cn_px, max_px=10):
+    """Indices of ROIs whose centroid is within max_px of the CN pixel position."""
+    near = []
+    for i in range(len(stat)):
+        cx = float(np.mean(stat[i]['xpix']))
+        cy = float(np.mean(stat[i]['ypix']))
+        if np.hypot(cx - cn_px[0], cy - cn_px[1]) < max_px:
+            near.append(i)
+    return np.array(near, dtype=int)
 def main(folder, index=None):
     """
     Main function to process data. Handles optional index for specific photostim subfolder.
@@ -43,16 +81,29 @@ def main(folder, index=None):
         iscell = np.load(os.path.join(bci_folder, 'iscell.npy'), allow_pickle=True)
         stat = np.load(os.path.join(bci_folder, 'stat.npy'), allow_pickle=True)
         Ftrace = np.load(os.path.join(bci_folder, 'F.npy'), allow_pickle=True)
-        if keep_suite2p_cells == 1:
-            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
-        else:
-            cells = np.arange(iscell.shape[0])   # 0..N-1
-        
-        Ftrace = Ftrace[cells, :]
-        stat   = stat[cells]
-
         ops = np.load(os.path.join(bci_folder, 'ops.npy'), allow_pickle=True).tolist()
         siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
+
+        if keep_suite2p_cells == 1:
+            cells = np.where(np.asarray(iscell)[:, 0] == 1)[0]
+            # Always keep ROIs within 10 px of the conditioned neuron, even if
+            # suite2p called them not-cells — otherwise find_conditioned_neurons
+            # may latch onto a neighbor when the real CN has iscell == 0.
+            try:
+                cn_px = _cn_pixel_position(siHeader)
+                near_cn = _rois_near_cn(stat, cn_px, max_px=10)
+                if len(near_cn):
+                    added = np.setdiff1d(near_cn, cells)
+                    if len(added):
+                        print(f'[bci] keeping {len(added)} iscell==0 ROI(s) within 10 px of CN: {added.tolist()}')
+                    cells = np.unique(np.concatenate([cells, near_cn]))
+            except Exception as e:
+                print(f'[bci] could not extend iscell with near-CN ROIs: {e}')
+        else:
+            cells = np.arange(iscell.shape[0])   # 0..N-1
+
+        Ftrace = Ftrace[cells, :]
+        stat   = stat[cells]
         
         data['dat_file'] = bci_folder
         slash_indices = [match.start() for match in re.finditer('/', folder)]        
@@ -412,8 +463,12 @@ def find_conditioned_neurons(siHeader,stat):
         dist.append(d)
     dist = np.asarray(dist)
     conditioned_neuron_coordinates = cnPosPix
-    conditioned_neuron = np.where(dist<10)
-    
+    # ROIs within 10 px of the CN, sorted nearest-first so data['conditioned_neuron'][0][0]
+    # is the closest match.
+    near = np.where(dist < 10)[0]
+    near = near[np.argsort(dist[near])]
+    conditioned_neuron = (near,)
+
     return dist, conditioned_neuron_coordinates, conditioned_neuron, indices
 
 def create_photostim_Fstim(ops,F,siHeader,stat):
@@ -602,30 +657,40 @@ def create_bonsai_info(bonsai_folder, ops, dt_si):
         ops: suite2p ops dict (has 'frames_per_file')
         dt_si: ScanImage frame interval (1/scanVolumeRate)
 
-    Returns same 5-tuple as create_zaber_info:
-        reward_time    - per-trial array: time within trial to reward (or empty list)
-        step_time      - per-trial array: ResponsePeriod timestamp relative to trial start
-        trial_start    - list of trial start times in seconds (relative to first trial)
-        SI_start_times - per-trial array: trial start timestamp (OutputSet triggers ScanImage)
-        threshold_crossing_time - per-trial array: time within trial when spout hit P_max
+    Returns same 5-tuple as create_zaber_info. All per-trial latencies are
+    measured from the ResponsePeriod onset (the "trial start" once quiescence
+    is satisfied) and capped at response_period.duration, so rt computed in
+    the threshold calculator as threshold_crossing_time - SI_start_times gives
+    time within the response window:
+        reward_time    - per-trial array: reward time within response window (rel. to RP onset)
+        step_time      - per-trial array: quiescence duration (RP onset - trial onset)
+        trial_start    - list of RP onsets in seconds (relative to first trial)
+        SI_start_times - per-trial array: RP onset timestamp (analysis-time origin)
+        threshold_crossing_time - per-trial array: absolute timestamp of first
+                                  spout-reaches-P_max within the response window
     """
     import json
 
     events_dir = os.path.join(bonsai_folder, 'SoftwareEvents')
     op_dir = os.path.join(bonsai_folder, 'OperationControl')
 
-    # --- Load trial start times from Trial.json ---
-    trial_timestamps = []
+    # --- Load trial start times + per-trial response-period duration from Trial.json ---
+    trial_records = []
     with open(os.path.join(events_dir, 'Trial.json'), 'r') as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             ev = json.loads(line)
-            trial_timestamps.append(ev['timestamp'])
-    trial_timestamps = np.array(sorted(trial_timestamps))
+            dur = ev['data']['response_period']['duration']
+            if isinstance(dur, dict):
+                dur = dur['distribution_parameters']['value']
+            trial_records.append((ev['timestamp'], float(dur)))
+    trial_records.sort(key=lambda r: r[0])
+    trial_timestamps = np.array([r[0] for r in trial_records])
+    rp_durations = np.array([r[1] for r in trial_records])
 
-    # --- Load ResponsePeriod (go cue) times ---
+    # --- Load ResponsePeriod onset times (go cue = start of the reward window) ---
     go_cue_timestamps = []
     with open(os.path.join(events_dir, 'ResponsePeriod.json'), 'r') as f:
         for line in f:
@@ -635,6 +700,16 @@ def create_bonsai_info(bonsai_folder, ops, dt_si):
             ev = json.loads(line)
             go_cue_timestamps.append(ev['timestamp'])
     go_cue_timestamps = np.array(sorted(go_cue_timestamps))
+
+    # Per-trial RP onset: the first ResponsePeriod event in [trial_start, next_trial_start).
+    # NaN if the trial had no RP (e.g., aborted in quiescence).
+    rp_onsets = np.full(len(trial_timestamps), np.nan)
+    for ti in range(len(trial_timestamps)):
+        t0 = trial_timestamps[ti]
+        t1 = trial_timestamps[ti + 1] if ti + 1 < len(trial_timestamps) else np.inf
+        mask = (go_cue_timestamps >= t0) & (go_cue_timestamps < t1)
+        if np.any(mask):
+            rp_onsets[ti] = go_cue_timestamps[mask][0]
 
     # --- Load GiveReward times ---
     reward_timestamps = []
@@ -679,50 +754,41 @@ def create_bonsai_info(bonsai_folder, ops, dt_si):
 
     n_bonsai = len(trial_timestamps)
 
-    # --- Align Bonsai trials to ScanImage files via greedy duration matching ---
+    # --- Align Bonsai trials to ScanImage files via harp trigger timestamps ---
     si_durations = np.array(ops['frames_per_file']) * dt_si
     n_si = len(si_durations)
-    bonsai_intervals = np.diff(trial_timestamps)
-    tol = 0.5  # seconds tolerance
 
-    # Find starting offset: which Bonsai trial matches SI file 0?
-    best_start = 0
-    best_start_err = np.inf
-    for s in range(n_bonsai - 1):
-        err = abs(si_durations[0] - bonsai_intervals[s])
-        if err < best_start_err:
-            best_start_err = err
-            best_start = s
+    if len(si_trigger_timestamps) < n_si:
+        raise RuntimeError(
+            f'[bonsai] Harp trigger alignment failed: {n_si} SI files but only '
+            f'{len(si_trigger_timestamps)} trigger timestamps found in Behavior_34.bin. '
+            f'Check that the harp binary is present and the payload filter (0x01) is correct.'
+        )
 
-    # Greedy match: walk both sequences, skip Bonsai trials during pauses
-    si_to_bonsai = {}
-    bi = best_start
-    for si_idx in range(n_si):
-        for search in range(bi, min(bi + 10, n_bonsai - 1)):
-            if abs(si_durations[si_idx] - bonsai_intervals[search]) < tol:
-                si_to_bonsai[si_idx] = search
-                bi = search + 1
-                break
+    # Each SI file was triggered at a known harp timestamp; find nearest Bonsai trial.
+    diffs = np.abs(si_trigger_timestamps[:n_si, None] - trial_timestamps[None, :])
+    bonsai_for_si = np.argmin(diffs, axis=1)
+    si_to_bonsai = {si_idx: int(bonsai_for_si[si_idx]) for si_idx in range(n_si)}
 
-    matched_bonsai_indices = np.array(sorted(si_to_bonsai.values()))
     n_matched = len(si_to_bonsai)
     print(f'[bonsai] {n_bonsai} Bonsai trials, {n_si} SI files, {n_matched} matched')
 
-    # Filter to matched trials only
-    # Use si_to_bonsai to get Bonsai trial index for each SI file
-    # For the last SI file (no interval to match), include it if its Bonsai trial = last matched + 1
-    matched_set = set(matched_bonsai_indices)
-    # The matched indices point to trials whose *interval* matched, meaning the trial itself was recorded.
-    # Also include the trial after the last matched interval (the last SI file's trial).
-    last_matched = matched_bonsai_indices[-1] if len(matched_bonsai_indices) > 0 else 0
-    if last_matched + 1 < n_bonsai:
-        matched_set.add(last_matched + 1)
-    matched_indices = np.array(sorted(matched_set))
-    trial_timestamps = trial_timestamps[matched_indices]
+    # Reindex Bonsai-side arrays to SI file order
+    matched_bonsai_indices = [si_to_bonsai[si_idx] for si_idx in range(n_matched)]
+    trial_timestamps = trial_timestamps[matched_bonsai_indices]
+    rp_onsets = rp_onsets[matched_bonsai_indices]
+    rp_durations = rp_durations[matched_bonsai_indices]
     n_trials = len(trial_timestamps)
 
+    # The "trial start" for analysis purposes is the ResponsePeriod onset (after
+    # quiescence is satisfied). All per-trial latencies are measured from this
+    # reference and bounded by response_period.duration, so reward_time and
+    # rt = threshold_crossing_time - SI_start_times can never exceed it.
+    # Falls back to the Bonsai trial timestamp if no ResponsePeriod was logged.
+    t_starts = np.where(np.isnan(rp_onsets), trial_timestamps, rp_onsets)
+
     # trial_start: seconds relative to first trial (matches zaber format)
-    trial_start = [(trial_timestamps[i] - trial_timestamps[0]) for i in range(n_trials)]
+    trial_start = list(t_starts - t_starts[0])
 
     # Per-trial arrays
     reward_time = np.empty(n_trials, dtype=object)
@@ -731,40 +797,36 @@ def create_bonsai_info(bonsai_folder, ops, dt_si):
     SI_start_times = np.empty(n_trials, dtype=object)
 
     for i in range(n_trials):
-        t_trial = trial_timestamps[i]
-        t_next = trial_timestamps[i + 1] if i + 1 < n_trials else t_sp[-1]
+        rp0 = t_starts[i]
+        cap = rp0 + rp_durations[i]
 
-        # step_time: go cue time relative to trial start (= ResponsePeriod - Trial)
-        go_mask = (go_cue_timestamps >= t_trial) & (go_cue_timestamps < t_next)
-        if np.any(go_mask):
-            step_time[i] = go_cue_timestamps[go_mask] - t_trial
+        # step_time: quiescence duration on this trial (RP onset relative to trial onset)
+        if not np.isnan(rp_onsets[i]):
+            step_time[i] = np.array([rp_onsets[i] - trial_timestamps[i]])
         else:
             step_time[i] = np.array([])
 
-        # threshold_crossing_time: when spout first reaches P_max within this trial
-        sp_mask = (t_sp >= t_trial) & (t_sp < t_next)
+        # threshold_crossing_time: absolute timestamp when spout first reaches P_max
+        # within the response window [rp0, rp0 + response_period.duration).
+        sp_mask = (t_sp >= rp0) & (t_sp < cap)
         seg_pos = pos[sp_mask]
         seg_t = t_sp[sp_mask]
         hit_idx = np.where(seg_pos >= P_max - 0.1)[0]
         if len(hit_idx) > 0:
-            # absolute harp time; calculator does rt - SI_start_times to get within-trial time
             threshold_crossing_time[i] = np.array([seg_t[hit_idx[0]]])
         else:
             threshold_crossing_time[i] = np.array([])
 
-        # reward_time: reward events within this trial, relative to trial start
-        rew_mask = (reward_timestamps >= t_trial) & (reward_timestamps < t_next)
+        # reward_time: rewards within the response window, relative to RP onset
+        rew_mask = (reward_timestamps >= rp0) & (reward_timestamps < cap)
         if np.any(rew_mask):
-            reward_time[i] = reward_timestamps[rew_mask] - t_trial
+            reward_time[i] = reward_timestamps[rew_mask] - rp0
         else:
             reward_time[i] = np.array([])
 
-        # SI_start_times: from OutputSet register (Behavior_34.bin, payload 0x0100)
-        if len(si_trigger_timestamps) > 0:
-            si_mask = (si_trigger_timestamps >= t_trial - 0.1) & (si_trigger_timestamps < t_next)
-            SI_start_times[i] = si_trigger_timestamps[si_mask]
-        else:
-            SI_start_times[i] = np.array([t_trial])  # fallback to Trial.json
+        # SI_start_times[i] = rp0, so rt = threshold_crossing_time - SI_start_times
+        # gives time within the response period (matches the Bonsai QC convention).
+        SI_start_times[i] = np.array([rp0])
 
     return reward_time, step_time, trial_start, SI_start_times, threshold_crossing_time
 

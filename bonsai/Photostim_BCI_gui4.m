@@ -58,6 +58,7 @@ handles.output = hObject;
 % Update handles structure
 guidata(hObject, handles);
 global BCI_params
+BCI_params.gui_handle = hObject;
 assignin('base','hPhotostim_BCI',handles)
 % assignin('base','BCI_params',BCI_params)
 hSI = evalin('base','hSI');base = hSI.hScan2D.logFileStem;hSICtl = evalin('base','hSICtl');

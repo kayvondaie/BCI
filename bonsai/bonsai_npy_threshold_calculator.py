@@ -11,6 +11,17 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import os, json
 
+def _draw_switch_ticks(switches, frac=0.05):
+    """Vertical tick marks at threshold-switch trials, sized to the bottom
+    fraction of the current y-range so they never inflate the y-limits."""
+    ax = plt.gca()
+    ylo, yhi = ax.get_ylim()
+    th = ylo + frac * (yhi - ylo)
+    for s in switches:
+        ax.plot((s, s), (ylo, th), 'k', linewidth=0.6)
+    ax.set_ylim(ylo, yhi)
+
+
 ops = np.load(folder + r'/suite2p_BCI/plane0/ops.npy', allow_pickle=True).tolist()
 siHeader = np.load(folder + r'/suite2p_BCI/plane0/siHeader.npy', allow_pickle=True).tolist()
 len_files = ops['frames_per_file']
@@ -69,6 +80,13 @@ if BCI_thresholds is None or np.all(np.isnan(BCI_thresholds)):
     else:
         BCI_thresholds = np.full((2, len(rew)), np.nan)
         print('WARNING: no BCI_thresholds found')
+
+# If a lower-threshold change occurs in the first 10 trials, drop everything
+# before that change (applied only to the bottom-row plots below).
+_k_lower = np.diff(BCI_thresholds[0, :])
+_early_lower = np.where((_k_lower != 0) & (~np.isnan(_k_lower)))[0]
+_early_lower = _early_lower[_early_lower < 10]
+trim_start = int(_early_lower[-1] + 1) if len(_early_lower) > 0 else 0
 
 # Voltage mapping function
 fun = lambda x: np.minimum(
@@ -164,15 +182,17 @@ else:
         epoch_start = switches[si]
         epoch_end = switches[si + 1] if si + 1 < len(switches) else len(rew)
         actual_rt[si] = np.nanmean(rt[epoch_start:epoch_end])
-    plt.plot(np.convolve(rew[:], np.ones(10,)) / 10, 'k')
-    plt.xlim(8, len(rew))
+    k = 10
+    y_hit = np.convolve(rew[:], np.ones(k) / k, mode='valid')
+    x_hit = np.arange(len(y_hit)) + (k - 1) / 2
+    plt.plot(x_hit, y_hit, 'k')
+    plt.xlim(0, len(rew))
     plt.plot(dummy_hit, color='gray')
     plt.xlabel('Trial #')
     plt.ylabel('Hit rate')
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
-    for i in range(len(switches)):
-        plt.plot((switches[i], switches[i]), (0, .1), 'k')
+    _draw_switch_ticks(switches)
 
     plt.subplot(232)
     switch_frame = np.cumsum(len_files)[switch]
@@ -196,28 +216,37 @@ else:
     plt.ylabel('Trial #')
 
     plt.subplot(234)
-    plt.plot(np.convolve(np.nanmean(F[:, cn, :], axis=0), np.ones(10,))[10:-10] / 10, 'k')
+    k = 10
+    cn_trial = np.nanmean(F[:, cn, trim_start:], axis=0)
+    y_cn = np.convolve(cn_trial, np.ones(k) / k, mode='valid')
+    x_cn = np.arange(len(y_cn)) + (k - 1) / 2 + trim_start
+    plt.plot(x_cn, y_cn, 'k')
     plt.xlabel('Trial #')
     plt.ylabel('CN activity')
-    for i in range(len(switches)):
-        plt.plot((switches[i], switches[i]), (0, .1), 'k')
+    _draw_switch_ticks(switches[switches >= trim_start])
 
     plt.subplot(235)
-    ff = F[:, cn, :]
+    ff = F[:, cn, :].copy()  # copy: the loop below subtracts the baseline in place
     for ti in range(ff.shape[1]):
         ff[:, ti] = ff[:, ti] - np.nanmean(ff[0:20, ti])
-    n = switches[1]
-    plt.plot(np.convolve(np.nanmean(ff[60:, :], axis=0), np.ones(n,))[n:-n] / n, 'k')
+    switches_b = switches[switches >= trim_start]
+    n = int(switches_b[1] - trim_start) if len(switches_b) > 1 else max(1, ff.shape[1] - trim_start)
+    tuning_trial = np.nanmean(ff[60:, trim_start:], axis=0)
+    y_tun = np.convolve(tuning_trial, np.ones(n) / n, mode='valid')
+    x_tun = np.arange(len(y_tun)) + (n - 1) / 2 + trim_start
+    plt.plot(x_tun, y_tun, 'k')
     plt.xlabel('Trial #')
     plt.ylabel('CN Tuning')
-    for i in range(len(switches)):
-        plt.plot((switches[i], switches[i]), (0, .1), 'k')
+    _draw_switch_ticks(switches_b)
 
     plt.subplot(236)
-    x = np.arange(0, len(actual_rt) * 3, 3)
-    plt.bar(x, actual_rt, color='k')
-    x = np.arange(1, len(actual_rt) * 3 + 1, 3)
-    plt.bar(x, dummy_rt, color='gray')
+    keep_epochs = switches >= trim_start
+    actual_rt_b = actual_rt[keep_epochs]
+    dummy_rt_b = dummy_rt[keep_epochs]
+    x = np.arange(0, len(actual_rt_b) * 3, 3)
+    plt.bar(x, actual_rt_b, color='k')
+    x = np.arange(1, len(actual_rt_b) * 3 + 1, 3)
+    plt.bar(x, dummy_rt_b, color='gray')
     plt.legend(['Real', 'expected'])
     plt.xlabel('Epoch')
     plt.ylabel('Time to reward (s)')

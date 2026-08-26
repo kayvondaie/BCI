@@ -39,15 +39,15 @@ F0 = np.nanmean(np.nanmean(Fstim_raw[:8, :, :], axis=0), axis=-1)  # (cells,)
 
 # Baseline-subtract each (cell, target) trace, then divide by F0
 favg_raw_bs = favg_raw - np.nanmean(favg_raw[:8, :, :], axis=0, keepdims=True)
-favg_dff = favg_raw_bs / F0[None, :, None]
+favg_dff = favg_raw_bs 
 
-dim_thresh = np.nanpercentile(F0, 10)
+dim_thresh = np.nanpercentile(F0, 20)
 dim_mask = F0 <= dim_thresh
 not_cell_mask = iscell[:, 0] == 0
 
 far_avg = np.full((favg.shape[0], favg.shape[2]), np.nan)
 for gi in range(favg.shape[2]):
-    far_cells = np.where((stimDist[:, gi] > 100) & dim_mask & not_cell_mask)[0]
+    far_cells = np.where((stimDist[:, gi] > 200) & dim_mask)[0]
     if len(far_cells) > 0:
         far_avg[:, gi] = np.nanmean(favg_dff[:, far_cells, gi], axis=1)
 
