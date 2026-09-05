@@ -1041,6 +1041,55 @@ _scatter(axes_a[1], alpha_cum_arr, late_change_per_ep0,
 save_panel('lateAUC_vs_alpha_incr_and_cumulative')
 
 #%% ============================================================================
+# Per-SESSION late-AUC rise vs gain change — which sessions show it, and does
+# it fall off when the change is TOO big? (inverted-U test)
+# ============================================================================
+# Reuses the lateAUC per-transition arrays (alpha_cum_arr, late_change_per_ep0,
+# sess_idx_arr). Per session, take the LARGEST cumulative gain change and the
+# late-AUC change there: "at the hardest the task got this session, did the late
+# tuning rise?" A single linear fit can wash out a rise-then-fall relationship.
+_okt = np.isfinite(alpha_cum_arr) & np.isfinite(late_change_per_ep0)
+_srow = {}
+for _ti in np.where(_okt)[0]:
+    _si = int(sess_idx_arr[_ti])
+    _a, _y = alpha_cum_arr[_ti], late_change_per_ep0[_ti]
+    if _si not in _srow or _a > _srow[_si][0]:
+        _srow[_si] = (_a, _y)
+_rows = sorted([(a, y, session_keys[si]) for si, (a, y) in _srow.items()],
+               reverse=True)
+_nup = sum(y > 0 for a, y, k in _rows)
+print("\nPer-session late-AUC change at the session's LARGEST cumulative gain change:")
+print(f"  {'alpha_cum':>9} {'dLateAUC':>9}  session")
+for a, y, k in _rows:
+    print(f"  {a:9.2f} {y:+9.3f}  {k[0]}_{k[1]}{'   UP' if y > 0 else ''}")
+print(f"  --> {_nup}/{len(_rows)} sessions raised late-AUC at their hardest point")
+
+_a_all = alpha_cum_arr[_okt]; _y_all = late_change_per_ep0[_okt]
+fig_ps, ax_ps = panel_row(2)
+# left: all transitions, binned by cumulative alpha (median +/- SEM per bin)
+_edges = np.unique(np.nanpercentile(_a_all, [0, 20, 40, 60, 80, 100]))
+_cx, _cy, _ce = [], [], []
+for _lo, _hi in zip(_edges[:-1], _edges[1:]):
+    _m = (_a_all >= _lo) & (_a_all <= _hi)
+    if _m.sum() >= 3:
+        _cx.append(np.median(_a_all[_m])); _cy.append(np.median(_y_all[_m]))
+        _ce.append(np.std(_y_all[_m]) / np.sqrt(_m.sum()))
+ax_ps[0].scatter(_a_all, _y_all, s=10, c='0.75', edgecolors='none')
+ax_ps[0].errorbar(_cx, _cy, yerr=_ce, fmt='o-', color='crimson', ms=4, lw=1.2, capsize=2)
+ax_ps[0].axhline(0, color='gray', lw=0.5, ls=':')
+ax_ps[0].set_xlabel('cumulative alpha (binned)')
+ax_ps[0].set_ylabel(f'Late AUC change vs epoch 0\n(trials {LATE_LO}-{LATE_HI})')
+ax_ps[0].set_title('rise then fall for big changes?', fontsize=9)
+# right: one dot per session (max cumulative alpha vs late change there)
+_sa = np.array([a for a, y, k in _rows]); _sy = np.array([y for a, y, k in _rows])
+ax_ps[1].scatter(_sa, _sy, s=18, c='k', alpha=0.6, edgecolors='none')
+ax_ps[1].axhline(0, color='gray', lw=0.5, ls=':')
+ax_ps[1].set_xlabel('session max cumulative alpha')
+ax_ps[1].set_ylabel('late AUC change at that point')
+ax_ps[1].set_title(f'{_nup}/{len(_rows)} sessions up', fontsize=9)
+save_panel('lateAUC_per_session_vs_gain')
+
+#%% ============================================================================
 # Per-switch ΔCN vs ΔRT — direct neural<->behavioral coupling
 # ============================================================================
 # For each threshold-increase transition: ΔCN = post-window mean pre-reward AUC

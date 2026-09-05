@@ -164,7 +164,8 @@ def transfer_fun(fluorescence, lower, upper, max_speed=3.3, low_floor=0.0):
         return np.zeros_like(fluorescence)
     speed = (fluorescence - lower) / gain * max_speed
     speed = np.clip(speed, 0, max_speed)
-    return np.maximum(speed, low_floor)
+    speed = np.maximum(speed, low_floor)                 # minimum step WHEN moving
+    return np.where(fluorescence > lower, speed, 0.0)    # port FROZEN below lower thr
 
 
 # Build continuous CN fluorescence from roi_csv
@@ -594,7 +595,7 @@ for mi in range(len(mice)):
 
         try:
             bci_keys_loop = ['F', 'mouse', 'session', 'conditioned_neuron',
-                             'dt_si', 'reward_time', 'BCI_thresholds',
+                             'dt_si', 'threshold_crossing_time', 'BCI_thresholds',
                              'roi_csv', 'cn_csv_index']
             data = ddct.load_hdf5(folder, bci_keys_loop, [])
 
@@ -602,9 +603,12 @@ for mi in range(len(mice)):
             trl = F.shape[2]
             cn = data['conditioned_neuron'][0][0]
 
-            data['reward_time'] = parse_hdf5_array_string(data['reward_time'], trl)
+            # rt_sess = threshold CROSSING time (port reaches target), NOT reward
+            # time (which adds lick/delivery latency). A hit = the port crossed.
+            data['threshold_crossing_time'] = parse_hdf5_array_string(
+                data['threshold_crossing_time'], trl)
             rt_sess = np.array([x[0] if len(x) > 0 else np.nan
-                                for x in data['reward_time']], dtype=float)
+                                for x in data['threshold_crossing_time']], dtype=float)
             hit_sess = np.isfinite(rt_sess)
 
             # Thresholds
@@ -840,6 +844,13 @@ for mi in range(len(mice)):
                 'cursor_speed': cursor_speed_s.copy(),
                 'cursor_speed_easy': cursor_speed_easy_s.copy(),
                 'cursor_peak': cursor_peak_s.copy(),
+                # raw per-trial data for the exact-integral compensation
+                # (compensation_exact.py); CN is roi_csv in threshold units,
+                # chunk starts at trial start (no buffer), cn_stp = crossing idx.
+                'thr_l': thr_l.copy(),
+                'cn_fluor': [np.asarray(c, float) for c in cn_fluor],
+                'cn_stp': np.asarray(cn_stp, int),
+                'dt': float(np.asarray(data['dt_si']).ravel()[0]),
             }
 
             # --- Save per-session figure (same layout as Cell 4) ---

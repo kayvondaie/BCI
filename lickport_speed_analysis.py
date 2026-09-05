@@ -67,7 +67,8 @@ def transfer_fun(fluorescence, lower, upper, max_speed=3.3, low_floor=0.0):
     if gain <= 0:
         return np.zeros_like(fluorescence)
     speed = np.clip((fluorescence - lower) / gain * max_speed, 0.0, max_speed)
-    return np.maximum(speed, low_floor)
+    speed = np.maximum(speed, low_floor)                 # minimum step WHEN moving
+    return np.where(fluorescence > lower, speed, 0.0)    # port FROZEN below lower thr
 
 N_REF = 10   # reference trials from epoch 0 for the expected-RT replay
 
