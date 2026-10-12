@@ -1,0 +1,128 @@
+THREE-FACTOR HEBBIAN PLASTICITY PAPER — SESSION HANDOFF
+Generated: 2026-03-24
+========================================================================
+
+OVERVIEW
+--------
+Building Nature-quality figures for a paper on 3-factor Hebbian plasticity
+in a BCI task. Photostimulation-evoked responses (AMP) measure synaptic
+weights before/after BCI learning. Central question: what modulates
+Hebbian plasticity (dW) beyond simple pre-post coactivity?
+
+MICE & DATA
+-----------
+6 mice: BCI102, BCI103, BCI104, BCI105, BCI106, BCI109
+~44 sessions total (3 fail QC, see qc_summary.csv)
+Data path: //allen/aind/scratch/BCI/2p-raw/{mouse}/{session}/pophys/
+BCI103 and BCI109 are GCaMP6 at lower framerate — cannot hardcode timesteps
+
+USER ENVIRONMENT
+----------------
+- Runs scripts in Spyder (not CLI). Cannot run Python from terminal.
+- Scripts use #%% cell markers for interactive execution
+- All scripts use sys.path.insert(0, _THIS_DIR) to force local imports
+- When results need to be shared, save .txt files (not just .npy)
+
+QC
+--
+Script: session_qc.py
+CSV: meta_analysis_results/qc/qc_summary.csv
+3 sessions fail: BCI104/012325, BCI105/012125, BCI105/012425
+Filtering: blacklist approach (_qc_fail set). Only exclude sessions
+explicitly marked as failing, NOT sessions absent from CSV.
+
+COMPLETED SCRIPTS & KEY RESULTS
+================================
+
+1. three_factor_variance_explained.py + _figure.py
+   - 2-factor (epoch-specific Hebbian) explains most variance
+   - 3-factor (behavioral modulation) adds almost nothing
+   - Within-session fits are real (~6/20 betas nonzero per session)
+   - But betas flip sign across AND within sessions
+
+2. sliding_window_temporal_offset.py + _figure.py
+   - Temporal offset analysis of behavioral modulation of HI
+   - Cell 4b: signed -log10(p) coefficient matrices
+   - Cell 4c: Lasso MLR (pooled) — only Hit x Pre survived (R^2=0.009)
+   - RT sign flipped to "Speed" (beh_labels = ['Hit rate','RPE','Speed','Hit RPE'])
+
+3. sliding_window_HI_lasso.py
+   - Per-session lasso: nothing significant
+   - Conclusion: correlated regressors can't be disambiguated
+
+4. three_factor_variance_explained_2nd_order.py
+   - 2nd order: CC = r_pre * sum_k w_{post->k} * (r_k - bl_k)
+   - CRITICAL FIX applied: changed from geometric-mean-of-folds p to
+     pooled spearmanr on concatenated out-of-fold predictions
+   - Results after fix: 2nd order population Wilcoxon p=0.014 (5 sig sessions)
+     2nd vs shuffled paired p=0.017, combined p=0.0009
+   - 1st order looks weak in matched subset (post=stim target) which
+     makes it hard to include alongside the main 1st-order narrative
+   - Cell 8 added: pooled comparison of all 5 models with stats txt
+
+5. bci_learning_analysis.py
+   - CN activity increase across trials as BCI learning measure
+   - Cell 5: grand mean +/- SEM vs raw trial number (no per-mouse lines)
+   - Cell 6: early vs late paired plots
+   - Cell 8: summary stats txt
+   - Frame-rate fix applied for GCaMP6 mice
+   - ISSUE: BCI103 and BCI109 still missing from plots after frame-rate
+     fix. User said "same results". May need further debugging — possibly
+     load_hdf5 failing for these mice or CN parsing issue.
+
+6. model_based_variance_explained.py  [JUST REVISED, NOT YET RUN]
+   - Model: dW ~ d_hat_post * sum(r_pre)
+   - d_hat_post = pearsonr(nontarget_activity, step_vector) per trial
+   - step_vector = binary lickport movement from zaber data
+   - Correlations restricted to frames between trial_start and reward
+   - PREVIOUS VERSION used CN activity as proxy — WRONG, user corrected
+   - Current version uses data['step_time'] to build per-trial step mask
+     aligned to F tensor, with trial_mask restricting to valid frames
+   - Has not been run yet. This is the next thing to test.
+
+7. three_factor_learning_paper_figures.py
+   - Master script, one cell per figure
+   - Runs computation scripts THEN figure scripts
+   - Cell 0: setup + auto-run QC if CSV missing
+   - Cell 1: example_pair_simple.py
+   - Cell 2: hebbian_index_didactic.py
+   - Cell 3: three_factor_variance_explained.py then _figure.py
+   - Cell 4: sliding_window_temporal_offset.py then _figure.py
+
+IMPORTANT CONVENTIONS
+=====================
+- Figure color scheme: pre=blue, post=red, 3rd factor=orange,
+  2f=gray('0.5'), 3f=black('k'), light/dark for early/late
+- Figure specs: 8pt Arial, svg.fonttype='none', DPI 300,
+  save PNG+SVG to OneDrive panels dir
+- zscore_mat in BCI_data_helpers.py subtracts mean — the WORKING version
+  in _2026.py does NOT (just divides by std). Std-only is what works.
+- Pairwise mode for pre-epoch: 'dev2'
+  CC = r_pre * (r_post - baseline) for 1st order
+
+PENDING / NEXT STEPS
+=====================
+1. Run model_based_variance_explained.py with the step_vector revision
+   and check results
+
+2. Debug bci_learning_analysis.py for BCI103/BCI109 — they're still
+   missing from plots despite frame-rate fix
+
+3. The sign of the Hebbian rule flips on block-by-block timescale WITHIN
+   sessions. Prior "hebbian index" analysis confirmed this. Per-session
+   models can't capture it. Potential directions:
+   - Within-session sliding window fits
+   - Population pattern identity (which neurons are coactive, not just how much)
+   - BCI neuron relationship to population mode
+   - Neuromodulatory proxies (pupil, locomotion, lick rate)
+   - Trial history / behavioral state sequences
+
+KEY FILES
+=========
+Scripts:        BCI/*.py (see list above)
+Results:        BCI/meta_analysis_results/
+QC:             BCI/meta_analysis_results/qc/
+Data loading:   data_dict_create_module_test.py
+Helpers:        BCI_data_helpers.py
+Session list:   session_counting.py
+Step vector:    bci_time_series.py (bci_time_series_fun builds step/reward/trial_start vectors)

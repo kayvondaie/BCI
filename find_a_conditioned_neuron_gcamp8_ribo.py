@@ -54,7 +54,8 @@ except:
 
 iscell = data['iscell']
 cns = np.where((np.abs(tune) < .1) & (np.asarray(evts) > .04))[0]
-cns = np.where(((tune) > .15) & (np.asarray(evts) > .03))[0]
+cns = np.where(((tune) > 0) & (np.asarray(evts) > .04))[0]
+cns = cns[cns != cn]
 
 
 fig, axs = plt.subplots(12, 5, figsize=(5, 10))  # Adjust figsize as needed
@@ -82,9 +83,11 @@ for i in range(40, 60):
     x = int(x)
     y = int(y)
     a = img[y - win:y + win, x - win:x + win]
-    axs[i].imshow(a, vmin=0, vmax=60, cmap='gray')
+    axs[i].imshow(a, vmin=0, vmax=160, cmap='gray')
     axs[i].axis('off')
     axs[i].set_title(str(cns[i-40]), fontsize=6)
 print(cns[0:19]+1)
 plt.tight_layout()
+np.savetxt(folder + r'/cn_candidates.txt', cns[0:19] + 1, fmt='%d')
+fig.savefig(folder + r'/cn_candidates_summary.png', dpi=300)
 plt.show()

@@ -668,6 +668,25 @@ def compute_binned_behaviors_and_pairwise(
             CCstep[:, :, i] = kstep[:, ind]    @ kstep[:, ind].T
             CCts[:, :, i]   = k[:, ind]        @ k[:, ind].T
             CCpre[:, :, i]  = kpre[:, ind]     @ kpre[:, ind].T
+        
+        elif pairwise_mode == "dot_prod_dev":
+            CCrew[:, :, i]  = krewards[:, ind] @ krewards[:, ind].T
+            CCstep[:, :, i] = kstep[:, ind]    @ kstep[:, ind].T
+            CCts[:, :, i]   = k[:, ind]        @ (k[:, ind].T - np.nanmean(k[:,0:20].T,0))
+            CCpre[:, :, i]  = kpre[:, ind]     @ kpre[:, ind].T
+        
+        
+        elif pairwise_mode == "lag_to_late":
+            CCrew[:, :, i]  = krewards[:, ind] @ kstep[:, ind].T
+            CCstep[:, :, i] = kstep[:, ind]    @ kstep[:, ind].T
+            CCts[:, :, i]   = k[:, ind]        @ kstep[:, ind].T
+            CCpre[:, :, i]  = kpre[:, ind]     @ kstep[:, ind].T
+            
+        elif pairwise_mode == "lag_to_rew":
+            CCrew[:, :, i]  = krewards[:, ind] @ krewards[:, ind].T
+            CCstep[:, :, i] = kstep[:, ind]    @ krewards[:, ind].T
+            CCts[:, :, i]   = k[:, ind]        @ krewards[:, ind].T
+            CCpre[:, :, i]  = kpre[:, ind]     @ krewards[:, ind].T
 
         elif pairwise_mode == "dot_prod_no_mean":
             if centered_dot is None:
@@ -767,3 +786,273 @@ def build_design_matrix(epoch_to_XT, B, epoch_order):
     for epoch_name in epoch_order:
         X_parts.append(epoch_to_XT[epoch_name] @ B)
     return np.hstack(X_parts)
+
+
+
+import numpy as np
+
+def compute_trial_level_cc_with_epochs(
+    *,
+    F,
+    tsta,
+    dt_si,
+    reward_time,
+    step_time=None,
+    pairwise_mode='dot_prod',
+    centered_dot=None,
+    zscore_mat=None,
+):
+    """
+    Compute trial-level pairwise CC using within-trial temporal samples.
+    
+    Parameters
+    ----------
+    F : ndarray (n_timepoints, n_neurons, n_trials)
+        Neural activity tensor
+    tsta : ndarray
+        Time vector (seconds)
+    dt_si : float
+        Sampling interval
+    reward_time : list/array of arrays
+        Reward times per trial
+    step_time : list/array of arrays, optional
+        Step times per trial
+    pairwise_mode : str
+        'dot_prod', 'noise_corr', 'dot_prod_no_mean', 'dot_prod_z'
+    centered_dot : function
+        For 'dot_prod_no_mean' mode
+    zscore_mat : function
+        For 'dot_prod_z' mode
+    
+    Returns
+    -------
+    CC_dict : dict
+        Keys: 'pre', 'go_cue', 'late', 'reward'
+        Values: ndarray (n_neurons, n_neurons, n_trials)
+    """
+    
+    n_neurons = F.shape[1]
+    n_trials = F.shape[2]
+    
+    # Initialize output dict
+    CC_dict = {
+        'pre': np.zeros((n_neurons, n_neurons, n_trials)),
+        'go_cue': np.zeros((n_neurons, n_neurons, n_trials)),
+        'late': np.zeros((n_neurons, n_neurons, n_trials)),
+        'reward': np.zeros((n_neurons, n_neurons, n_trials)),
+    }
+    
+    # Time indices for absolute-time epochs
+    ts_pre = np.where((tsta > -10) & (tsta < 0))[0]
+    ts_go = np.where((tsta > 0) & (tsta < 2))[0]
+    
+    for t in range(n_trials):
+        
+        # Pre-trial epoch
+        if len(ts_pre) > 0:
+            F_pre = F[ts_pre, :, t]
+            CC_dict['pre'][:, :, t] = _compute_pairwise_single_trial(
+                F_pre, pairwise_mode, centered_dot, zscore_mat
+            )
+        
+        # Go cue epoch
+        if len(ts_go) > 0:
+            F_go = F[ts_go, :, t]
+            CC_dict['go_cue'][:, :, t] = _compute_pairwise_single_trial(
+                F_go, pairwise_mode, centered_dot, zscore_mat
+            )
+        
+        # Late epoch (around steps/rewards)
+        if step_time is not None and len(step_time[t]) > 0:
+            steps = step_time[t]
+            indices_late = get_indices_around_steps(tsta, steps, pre=20, post=1)
+            indices_late = indices_late[indices_late < F.shape[0]]
+            if len(indices_late) > 0:
+                F_late = F[indices_late, :, t]
+                CC_dict['late'][:, :, t] = _compute_pairwise_single_trial(
+                    F_late, pairwise_mode, centered_dot, zscore_mat
+                )
+        elif len(reward_time[t]) > 0:
+            # Fallback: use reward time
+            rewards = reward_time[t]
+            indices_late = get_indices_around_steps(tsta, rewards, pre=20, post=1)
+            indices_late = indices_late[indices_late < F.shape[0]]
+            if len(indices_late) > 0:
+                F_late = F[indices_late, :, t]
+                CC_dict['late'][:, :, t] = _compute_pairwise_single_trial(
+                    F_late, pairwise_mode, centered_dot, zscore_mat
+                )
+        
+        # Reward epoch (after reward)
+        if len(reward_time[t]) > 0:
+            rewards = reward_time[t]
+            indices_rew = get_indices_around_steps(tsta, rewards, pre=1, post=10)
+            indices_rew = indices_rew[indices_rew < F.shape[0]]
+            if len(indices_rew) > 0:
+                F_rew = F[indices_rew, :, t]
+                CC_dict['reward'][:, :, t] = _compute_pairwise_single_trial(
+                    F_rew, pairwise_mode, centered_dot, zscore_mat
+                )
+    
+    return CC_dict
+
+
+def _compute_pairwise_single_trial(F_trial, mode, centered_dot=None, zscore_mat=None):
+    """
+    Compute pairwise matrix for one trial using temporal samples.
+    
+    Parameters
+    ----------
+    F_trial : ndarray (n_timepoints, n_neurons)
+        Neural activity for one trial
+    mode : str
+        Pairwise computation mode
+    centered_dot, zscore_mat : functions
+        For specific modes
+    
+    Returns
+    -------
+    CC : ndarray (n_neurons, n_neurons)
+        Pairwise correlation/covariance matrix
+    """
+    
+    # Handle NaNs
+    F_trial = np.nan_to_num(F_trial, nan=0.0)
+    
+    if F_trial.shape[0] == 0:
+        return np.zeros((F_trial.shape[1], F_trial.shape[1]))
+    
+    if mode == 'dot_prod':
+        # Covariance across time: (n_neurons, n_time) @ (n_time, n_neurons)
+        return F_trial.T @ F_trial
+    
+    elif mode == 'noise_corr':
+        # Correlation coefficient
+        if F_trial.shape[0] > 1:
+            return np.corrcoef(F_trial.T)
+        else:
+            return np.zeros((F_trial.shape[1], F_trial.shape[1]))
+    
+    elif mode == 'dot_prod_no_mean':
+        if centered_dot is None:
+            raise ValueError("centered_dot required for 'dot_prod_no_mean'")
+        return centered_dot(F_trial.T)
+    
+    elif mode == 'dot_prod_z':
+        if zscore_mat is None:
+            raise ValueError("zscore_mat required for 'dot_prod_z'")
+        F_z = zscore_mat(F_trial.T)
+        return F_z @ F_z.T
+    
+    else:
+        raise ValueError(f"Unknown pairwise_mode: {mode}")
+
+
+def build_trial_level_features(
+    CC_dict,
+    behavior_dict,
+    stimDist,
+    AMP,
+    dist_target_lt=10,
+    dist_nontarg_min=30,
+    dist_nontarg_max=1000,
+    amp0_thr=0.1,
+    amp1_thr=0.1,
+):
+    """
+    Build feature matrix from trial-level CC × trial-level behavior.
+    
+    Parameters
+    ----------
+    CC_dict : dict
+        Keys: epoch names ('pre', 'go_cue', 'late', 'reward')
+        Values: ndarray (n_neurons, n_neurons, n_trials)
+    behavior_dict : dict
+        Keys: behavior names (e.g., 'hit', 'rt', 'rpe')
+        Values: ndarray (n_trials,) - one value per trial
+    stimDist : ndarray (n_neurons, n_groups)
+        Distance from stim sites
+    AMP : list of ndarrays
+        AMP[0], AMP[1]: responses in epoch 0 and 1
+    dist_target_lt, dist_nontarg_min, dist_nontarg_max : float
+        Distance thresholds for target/nontarget selection
+    amp0_thr, amp1_thr : float
+        Amplitude thresholds
+    
+    Returns
+    -------
+    X : ndarray (n_pairs, n_features)
+        Features = epoch × behavior combinations
+    Y : ndarray (n_pairs,)
+        Plasticity (ΔW) for each pair
+    feature_names : list of str
+        Feature labels
+    """
+    
+    # Identify valid neuron pairs
+    pair_list = []  # (group_idx, nontarget_neuron_idx, target_neurons_idx)
+    Y_list = []
+    
+    for gi in range(stimDist.shape[1]):
+        # Target neurons (close to stim, responding)
+        targets = np.where(
+            (stimDist[:, gi] < dist_target_lt)
+            & (AMP[0][:, gi] > amp0_thr)
+            & (AMP[1][:, gi] > amp1_thr)
+        )[0]
+        
+        if targets.size == 0:
+            continue
+        
+        # Nontarget neurons (far from stim)
+        nontargets = np.where(
+            (stimDist[:, gi] > dist_nontarg_min) 
+            & (stimDist[:, gi] < dist_nontarg_max)
+        )[0]
+        
+        if nontargets.size == 0:
+            continue
+        
+        # Plasticity for each nontarget
+        y_vals = AMP[1][nontargets, gi] - AMP[0][nontargets, gi]
+        
+        for nt_idx, nt in enumerate(nontargets):
+            pair_list.append((gi, nt, targets))
+            Y_list.append(y_vals[nt_idx])
+    
+    n_pairs = len(pair_list)
+    Y = np.array(Y_list)
+    
+    # Build feature matrix
+    epoch_names = list(CC_dict.keys())
+    behavior_names = list(behavior_dict.keys())
+    n_features = len(epoch_names) * len(behavior_names)
+    
+    X = np.zeros((n_pairs, n_features))
+    feature_names = []
+    
+    feat_idx = 0
+    for epoch_name in epoch_names:
+        CC_trial = CC_dict[epoch_name]  # (n_neurons, n_neurons, n_trials)
+        
+        for behav_name in behavior_names:
+            behav_vec = behavior_dict[behav_name]  # (n_trials,)
+            
+            # For each pair, compute mean(CC_trial * behavior_trial)
+            for pair_idx, (gi, nt, targets) in enumerate(pair_list):
+                
+                # Average CC from targets to this nontarget, per trial
+                CC_target_to_nt = CC_trial[targets, nt, :]  # (n_targets, n_trials)
+                CC_mean_per_trial = CC_target_to_nt.mean(axis=0)  # (n_trials,)
+                
+                # Combine with behavior at trial level
+                X[pair_idx, feat_idx] = np.nanmean(CC_mean_per_trial * behav_vec)
+            
+            feature_names.append(f"{epoch_name}_{behav_name}")
+            feat_idx += 1
+    
+    # Clean up
+    X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    return X, Y, feature_names
+

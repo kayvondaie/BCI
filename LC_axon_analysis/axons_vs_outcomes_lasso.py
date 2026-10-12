@@ -57,9 +57,9 @@ for i in inds:
 
         # Compute RPE
         rpe_window = 5
-        hit_rpe  = compute_rpe(rt == 20, baseline=1, window=rpe_window, fill_value=50)
-        miss_rpe = compute_rpe(rt != 20, baseline=1, window=rpe_window, fill_value=50)
-        rpe      = compute_rpe(rt, baseline=5, window=rpe_window, fill_value=50)
+        hit_rpe  = compute_rpe_standard(rt == 20, baseline=1, window=rpe_window, fill_value=50)
+        miss_rpe = compute_rpe_standard(rt != 20, baseline=1, window=rpe_window, fill_value=50)
+        rpe      = compute_rpe_standard(rt, baseline=5, window=rpe_window, fill_value=50)
 
         # Reward-aligned responses
         rta = reward_aligned_responses(dfaxon, reward_vector, dt_si, window=(-2, 4))

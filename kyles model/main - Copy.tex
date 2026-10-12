@@ -1,0 +1,312 @@
+\documentclass[
+  journal=medium,
+  manuscript=preprint,
+  year=2026
+]{aind-preprint}
+
+\include{setup.tex}
+
+\newcommand{\todo}[1]{\textcolor{purple}{TODO: #1}}
+\newcommand{\KA}[1]{\textcolor{blue}{KA: #1}}
+\newcommand{\SM}[1]{\textcolor{red}{SM: #1}}
+
+\addbibresource{references.bib}
+\graphicspath{ {figures/} }
+
+\title{Reward prediction error modulates Hebbian plasticity in motor cortex during learning}
+
+\author{Kayvon Daie}
+\affiliation{The Allen Institute for Neural Dynamics, Seattle, WA}
+
+\author{Kyle Aitken}
+\affiliation{The Allen Institute for Neural Dynamics, Seattle, WA}
+
+
+
+
+\begin{document}
+
+\textbf{\hfill\break Abstract}
+
+\noindent Synaptic plasticity underlies learning, but the functional form of the learning rules that govern plasticity \textit{in vivo} remains poorly constrained. Here we use a brain--computer interface (BCI) paradigm in mice to measure changes in functional connectivity in motor cortex during learning. We find that plasticity follows a three-factor Hebbian rule in which the sign and magnitude of coactivity-dependent weight changes are modulated by behavioral outcome. The Hebbian index---the trial-by-trial slope relating coactivity to plasticity---is non-stationary within sessions and correlates with reward-port speed. These results constrain the space of biologically plausible learning rules and reveal that motor cortical plasticity is gated by an outcome-dependent third factor.
+
+\section{Introduction}
+
+\newpage
+
+\section{Results}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=4.18in]{figures/figure1.png}
+    \caption{\textbf{Three-factor Hebbian plasticity in BCI learning.} (a) Schematic of the three-factor learning rule: changes in synaptic weight ($\Delta w_{post,pre}$) depend on presynaptic activity, postsynaptic activity, and an outcome signal. (b) Photostimulation-evoked responses measure functional connection strengths before and after BCI learning, while closed-loop activity provides the Hebbian coactivity term. (c) When outcomes are positive, coactivity drives synaptic strengthening (HI $> 0$). (d) When outcomes are negative, the same coactivity drives synaptic weakening (HI $< 0$).}
+    \label{fig:schematic}
+\end{figure}
+Previous results demonstrate that BCI learning is associated with local plasticity in motor cortex (MC). The functional specificity of this plasticity is compatible with BCI learning: preparatory neurons increase their connections onto a new population that drives the conditioned neuron (CN), thus solving the task. These results are compatible with outcome-modulated plasticity. The goal of this paper is to identify the functional form of this outcome-modulated plasticity as a mathematical learning rule (Figure~\ref{fig:schematic}a). A spectrum of learning rule models have been put forth to explain plasticity in the brain. A generic form of these models is as follows:
+\begin{equation}
+    \Delta w_{post,pre} = f(r_{pre}(t),r_{post}(t),R,S,W,\ldots)
+\end{equation}
+
+To constrain these models, we use a BCI paradigm in which mice learn to modulate the activity of a conditioned neuron to move a reward port within reach. We recorded from 6 mice across 44 sessions (3 sessions excluded by quality control; see Methods). We measure functional connection strengths using photostimulation-evoked responses before and after each BCI session, yielding a direct readout of $\Delta w_{post,pre}$ (Figure~\ref{fig:schematic}b). During the closed-loop epoch, neural activity provides the coactivity term $r_{pre} \times r_{post}$. Under a simple Hebbian rule, coactivity should predict the sign of plasticity. However, this prediction depends on outcome: when behavioral outcomes are positive, coactivity and plasticity are positively related (HI $> 0$; Figure~\ref{fig:schematic}c), whereas when outcomes are negative, the same coactivity is associated with synaptic weakening (HI $< 0$; Figure~\ref{fig:schematic}d). This sign reversal suggests that a third factor---related to behavioral outcome---gates the direction of Hebbian plasticity.
+
+\subsection{Gain changes inject controlled reward prediction errors}
+
+A central prediction of outcome-modulated Hebbian plasticity is that the third factor should scale with reward prediction error (RPE). To test this prediction, we leveraged a feature of our experimental design: during BCI sessions, the upper threshold $\theta_U$ of the CN-to-speed transfer function was raised at experimenter-selected trials, reducing the gain of the mapping (Figure~\ref{fig:behavior}a). Each gain reduction constitutes an injected negative RPE: the same CN activity that previously drove the reward port at high speed now produces lower speed, increasing the time to reward (Figure~\ref{fig:behavior}b). This manipulation provides exogenous perturbations of RPE that are independent of the animal's neural strategy, strengthening the causal interpretation of any relationship between RPE and plasticity.
+
+We recorded from 6 mice across 41 sessions containing threshold increases. To quantify each perturbation, we replayed reference-trial fluorescence through the new transfer function and computed the expected hit rate and reward time assuming no neural adaptation (see Methods). In an example session with 7 gain epochs (Figure~\ref{fig:behavior}c--f), actual hit rate tracked the expected hit rate following each gain change (Figure~\ref{fig:behavior}c), CN fluorescence was largely stable across epochs while the gain decreased (Figure~\ref{fig:behavior}d), and the per-trial CN activity heatmap revealed that transient increases persisted across difficulty levels (Figure~\ref{fig:behavior}e). Actual reward time remained below the expected reward time in later epochs, indicating partial behavioral compensation (Figure~\ref{fig:behavior}f).
+
+At the population level, reward time increased abruptly at each gain change and partially recovered over the subsequent 5--10 trials (Figure~\ref{fig:behavior}g). CN activity, z-scored to the pre-transition baseline, increased following gain reductions (Figure~\ref{fig:behavior}h), consistent with an adaptive response to the increased difficulty. The RT-based RPE was sharply negative at each transition and recovered toward zero within approximately 10 trials (Figure~\ref{fig:behavior}i). Across all threshold increases, the magnitude of behavioral compensation---defined as the difference between expected and actual $\Delta$RT---scaled with the size of the expected perturbation (Figure~\ref{fig:behavior}j; $r = 0.73$), indicating that larger RPE injections drove proportionally larger adaptive responses. Finally, actual hit rate exceeded expected hit rate in the majority of post-transition epochs (Figure~\ref{fig:behavior}k), confirming that animals systematically outperformed the no-adaptation prediction.
+
+These results establish that gain reductions produce controlled, graded perturbations of RPE, and that animals partially compensate for these perturbations through rapid behavioral adaptation. In the following sections, we test whether these RPE perturbations are associated with corresponding changes in the Hebbian index.
+
+Figure caption:
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/figure behavior.png}
+\caption{\textbf{Gain changes inject controlled reward prediction errors that drive behavioral adaptation.} \textbf{(a)} Transfer function mapping CN fluorescence to reward port speed for each gain epoch in an example session (BCI105, 7 epochs). Lighter shades indicate earlier epochs (higher gain); darker shades indicate later epochs (lower gain). \textbf{(b)} Example hit trials from each epoch showing CN dF/F (top) and reward port speed (bottom). Traces are truncated at reward delivery. As gain decreases, the same CN activity drives progressively slower port movement. \textbf{(c)} Smoothed hit rate (black) and expected hit rate from transfer-function replay (gray) across trials for the example session. Tick marks indicate gain changes. \textbf{(d)} Continuous CN dF/F (black) with gain (blue, normalized to epoch 1) overlaid. \textbf{(e)} Trial $\times$ time heatmap of CN dF/F. \textbf{(f)} Actual (black) and expected (gray) reward time per epoch. \textbf{(g--i)} Population averages aligned to gain changes (threshold increases only; $n = X$ transitions across $Y$ sessions). \textbf{(g)} Reward time (black) rises toward the expected level (blue) at each transition and partially recovers. \textbf{(h)} CN activity (z-scored to pre-transition baseline) increases following gain reductions. \textbf{(i)} RT-based reward prediction error is sharply negative at the transition and recovers toward zero. \textbf{(j)} RT improvement (expected $\Delta$RT $-$ actual $\Delta$RT) vs.\ expected $\Delta$RT for individual epochs; larger perturbations produce proportionally larger compensation. \textbf{(k)} Actual vs.\ expected hit rate for all post-transition epochs. Points above the diagonal indicate the animal outperformed the no-adaptation prediction. Shaded regions in (g--i) denote $\pm$1 SEM.}
+\label{fig:behavior}
+\end{figure}
+
+\subsection{Pairwise correlations are non-stationary}
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=5in]{figures/figure_correlations.png}
+    \caption{\textbf{The Hebbian index is non-stationary within a session.} (a) Rastermap-sorted population activity across trials for an example session. Colored spans indicate windows of maximum (red) and minimum (blue) Hebbian index. (b,c) Neuron $\times$ neuron coactivity matrices ($r_{pre} \times \Delta r_{post}$) for the max and min HI windows, revealing distinct correlation structure. (d) HI time series across sliding windows. (e,f) Binned coactivity vs.\ $\Delta W$ for the max and min HI windows, with regression lines (orange) illustrating the sign reversal of the Hebbian rule.}
+    \label{fig:correlations}
+\end{figure}
+A key assumption of Hebbian learning rules is that pairwise coactivity determines the sign and magnitude of plasticity. However, this requires that the relevant coactivity patterns be stable over the course of a session. To test this assumption, we sorted neurons using rastermap and visualized population activity across trials in an example session (Figure~\ref{fig:correlations}a). The heatmap reveals that the population correlation structure is not static: distinct epochs of coordinated activity are visible, with the pattern changing on a timescale of tens of trials. Groups of neurons that are co-active early in the session can become decorrelated or anti-correlated later.
+
+To quantify this non-stationarity, we computed the pairwise coactivity matrix $r_{pre} \times (r_{post} - \bar{r}_{post})$ in sliding windows of 5 trials across each session. Comparing the coactivity matrices for two example windows reveals strikingly different structure (Figure~\ref{fig:correlations}b--c): during the window with the highest Hebbian index (Figure~\ref{fig:correlations}b), strong positive coactivity dominates, whereas during the window with the lowest Hebbian index (Figure~\ref{fig:correlations}c), the same neuron pairs show weak or oppositely signed coactivity. The neurons are sorted identically in both matrices, highlighting that the difference reflects a change in correlation structure rather than a change in which neurons are present.
+
+Because these pairwise products are the Hebbian term in the learning rule, their non-stationarity implies that the mapping between coactivity and plasticity must also vary over time. To track this, we define the Hebbian index (HI) as the OLS slope of $\Delta W$ vs.\ the coactivity term within each window. HI fluctuates in both sign and magnitude across windows within a single session (Figure~\ref{fig:correlations}d), transitioning between periods of positive and negative Hebbian plasticity. Formally, the HI is significantly heterogeneous across windows in 10/46 sessions (Cochran's $Q$-test for heterogeneity on Fisher $z$-transformed correlations, $p < 0.05$; median $I^2 = 0\%$, mean $I^2 = 16.6\%$), confirming that the variation is not attributable to sampling noise alone. The red and blue markers indicate the windows corresponding to the maximum and minimum HI, respectively.
+
+To verify that these fluctuations reflect a genuine change in the coactivity--plasticity relationship, we plotted binned coactivity vs.\ $\Delta W$ for the max and min HI windows (Figure~\ref{fig:correlations}e--f). In the max-HI window, neuron pairs with high coactivity show increased connection strength, consistent with Hebbian potentiation (Figure~\ref{fig:correlations}e). In the min-HI window, the same neuron pairs show the opposite trend: high coactivity is associated with synaptic weakening (Figure~\ref{fig:correlations}f). The regression lines (orange) illustrate this sign reversal. These results demonstrate that the same population can undergo Hebbian potentiation or depression at different times within a session, motivating a model in which a time-varying third factor modulates the direction of Hebbian plasticity.
+
+
+
+\subsection{Three-factor learning}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=3.77in]{figures/figure_3factor_data.png}
+    \caption{\textbf{Three-factor learning rule fits observed plasticity and is modulated by behavior.} (a) Predicted vs.\ actual $\Delta W$ for three-factor (black) and two-factor (gray) models, showing improved fit with the third factor. (b) Significance ($-\log_{10}(p)$) of two-factor vs.\ three-factor fits across sessions; three-factor fits are significant in 25/46 sessions. (c) Example session showing the Hebbian index (black) and $\Delta$Speed (orange) co-vary across trials. (d) Signed $-\log_{10}(p)$ matrix of the relationship between HI and behavioral variables across trial epochs; the strongest modulation is $\Delta$Speed during the pre-trial epoch.}
+    \label{fig:data}
+\end{figure}
+
+The simplest learning rule capable of goal-directed learning is the reward-modulated Hebbian rule $\Delta w_{post,pre} = f(r_{pre})\times f(r_{post}) \times f(R)$. To test whether three-factor learning is present in our data we analyze a simplified version of this learning rule:
+\begin{equation}
+    \Delta w_{post,pre} = \sum_t HI(t)\,(r_{post}(t)-\bar{r}_{post})\,r_{pre}(t)
+\end{equation}
+We term the third factor the Hebbian Index, as it relates plasticity to the Hebbian term quantifying the coactivity of the pre- and post-synaptic neurons. The Hebbian Index ($HI(t)$) is the slope of the relationship between the change in connection strength, $\Delta w_{post,pre}$, and the Hebbian term $(r_{post}(t)-\bar{r}_{post})\,r_{pre}(t)$. To test the ability of this model to account for observed plasticity, we employed cross-validated linear regression to fit $HI(t)$ across sliding windows within each session. We compared this three-factor model to a two-factor model in which $HI$ is held constant (i.e., a purely Hebbian rule with a single slope across all trials).
+
+The three-factor model produces predicted $\Delta W$ values that are more closely aligned with actual $\Delta W$ than the two-factor model, as shown by the steeper slope of the predicted-vs-actual relationship (Figure~\ref{fig:data}a; black: three-factor, gray: two-factor). To assess significance, we computed the 5-fold cross-validated Spearman rank correlation between predicted and actual $\Delta W$ for each session. Across the population, the three-factor test correlation was positive in 34/44 sessions (median Spearman $\rho = 0.013$; Wilcoxon signed-rank test, $p = 2.8 \times 10^{-5}$), with 11/44 sessions individually significant at $p < 0.05$ (Figure~\ref{fig:data}b). Pooling out-of-fold predictions across all sessions yielded Spearman $\rho = 0.015$ ($p = 2.0 \times 10^{-54}$). Three-factor fits consistently outperformed two-factor fits across the population (Figure~\ref{fig:data}b).
+
+If MC plasticity is governed by a three-factor rule, the Hebbian Index should covary with behavioral outcome variables. To test this, we computed the within-session Spearman rank correlation between $HI(t)$ and four outcome variables: hit rate, $\Delta$Speed (reward prediction error of lickport speed), speed (negative reaction time), and hit $\times$ RPE. In an example session, $HI(t)$ and $\Delta$Speed track each other closely across trials (Figure~\ref{fig:data}c, black: HI, orange: $\Delta$Speed), with both quantities z-scored for comparison. To systematically assess this relationship across all sessions, we tested whether the distribution of within-session Spearman $\rho$ values differed from zero using the Wilcoxon signed-rank test, and display the signed $-\log_{10}(p)$ for each behavioral variable at each trial epoch (pre, go cue, late, reward). The resulting matrix reveals that $\Delta$Speed during the pre-trial epoch is the strongest modulator of the Hebbian Index (mean Spearman $\rho = +0.11$, Wilcoxon signed-rank test $p = 4 \times 10^{-4}$; Figure~\ref{fig:data}d). Hit rate also showed a significant positive relationship with HI during the pre-trial epoch (mean Spearman $\rho = +0.15$, Wilcoxon signed-rank test $p = 0.007$) and reward epoch ($p = 0.038$), and hit $\times$ RPE during the pre epoch ($p = 0.019$). Speed (negative RT) was negatively correlated with HI in the pre epoch (mean Spearman $\rho = -0.11$, Wilcoxon signed-rank test $p = 0.045$), consistent with the interpretation that faster behavioral responses are associated with stronger Hebbian potentiation. These results demonstrate that Hebbian plasticity in MC is modulated by behavioral outcome, with changes in lickport speed providing the strongest and most consistent signal.
+
+
+
+\subsection{Three-factor model of BCI learning}
+Outline the model.
+Loss:
+\begin{equation}
+    L = \frac{1}{2}(R(t)-\bar{R})\sum_i (r_i(t) -\bar{r}_i)^2
+\end{equation}
+\begin{equation}
+    \Delta w_{i,j} =\frac{\partial L}{\partial w_{i,j}} = (R(t)-\bar{R})\sum_i (r_i(t) -\bar{r}_i)\,r_{j}(t)
+\end{equation}
+This loss thus produces the three-factor learning rule that is consistent with our data.
+
+
+\subsection{Non-local plasticity}
+Including higher-order terms in the gradient results in:
+\begin{equation}
+    \Delta w_{i,j} = (R(t)-\bar{R})\sum_i (r_i(t) -\bar{r}_i)\,r_{i}(t)
+\end{equation}
+
+
+\section{Methods}
+
+\subsection{Model training}
+
+A crucial aspect of this work is an attempt to train our network models in a biologically-realistic fashion.
+We define weight/synapse updates to be proportional to an \emph{reward prediction error} (RPE)-weighted eligibility trace,
+\begin{align}
+    \label{eq:methods_weight_adjust}
+    \Delta W_{ij,t} = \eta R_t \bar{E}_{ij,t}\,,
+\end{align}
+where $\eta$ is the learning rate, $R_t$ the RPE, and $\bar{E}_{ij,t}$ the \emph{eligibility trace}.
+This is a \emph{3-factor} learning rule, with the eligibility trace dependent upon only the synapse's pre- and postsynaptic neural activities and the RPE, some global signal of performance delivered to all hidden neurons in the RNN (the \emph{3rd factor}).
+Here, we will focus on the adjustment of the recurrent weights, $W_{ij}$. 
+Everything we discuss here generalizes to other ANN weights, including the input weights, $W_{iI}^\text{inp}$, with explicit expressions given below.
+Networks are trained on batch sizes of $1$ to mimic experiment.  
+
+We do not assume weight updates occur at every time step, $\Delta t$.
+The comparative slowness of weight updates to neural dynamics could be a result of sparse reward signals or the timescale such weight changes occur in the brain. 
+For simplicity, we assume weight updates occur at a fixed temporal interval that is some integer multiple, $n_\text{update}$, of the time step.\footnote{
+    It is straightforward to generalize our learning rule to temporally non-uniform updates. 
+    This could occur, for example, if weight updates only occurred when the magnitude of the RPE signal is above a given threshold.
+}
+We denote the set of time steps that weight updates occur by $\mathcal{T}_\text{update} = \{n_\text{update}, 2n_\text{update}, 3n_\text{update}, \ldots \}$.
+
+\paragraph{Reward prediction error}
+% Occasionally it is useful to quantify the value of a given action not just by the instantaneous reward of the action but rather some sum of rewards of time steps after the action was taken. 
+% To this end, define the \emph{return} or \emph{discounted future reward} at time $t$, $g_t$, to be a weighted sum of rewards received for all time steps $s \geq t$.
+% Specifically, for $0 \leq \gamma_g \leq 1$, we define the return to be
+% \begin{align}
+%     g_t = r_t + \gamma_g r_{t+1} + \gamma_g^2 r_{t+2} + \gamma_g^3 r_{t+3} + \ldots = \sum_{s=0}^T \gamma_g^s r_{t+s}\,.
+% \end{align}
+We assume that when reward signals come into the network, they are compared to some baseline reward rate, $\bar{r}_t$ in order to compute an RPE.
+For simplicity, in this work we take the baseline reward rate to be given by a rolling average of the instantaneous reward,
+\begin{align}
+\label{eq:avg_reward}
+    \bar{r}_t = \left(1-\frac{\Delta t}{\tau_\text{rew}}\right) \bar{r}_{t-1} + \frac{\Delta t}{\tau_\text{rew}} r_t\,,
+    % \bar{r}_t = \gamma_\text{bl} r_{t-1} + \left(1-\gamma_\text{bl}\right) r_t\,,\qquad \bar{g}_t = \gamma_\text{bl} g_{t-1} + \left(1-\gamma_\text{bl}\right) g_t
+\end{align}
+where $\tau_\text{rew}$ is the time scale of the baseline reward rate.\footnote{
+    We expect many of our results would also hold for different estimations of some baseline reward rate. \todo{Should we mention this, should we check this?}
+}
+The RPE at any given time step is then
+\begin{align}
+    R_t = \begin{cases}
+        r_t - \bar{r}_t & t \in \mathcal{T}_\text{rew}\,, \\
+        0 & \text{otherwise}\,.
+    \end{cases}
+\end{align}
+Thus no weight updates occur when there is no reward signal (see below).
+% We will investigate the differences of using the reward or return throughout this work.
+% Often, how they enter into expressions will be equivalent, so we will use $R_t$ to represent either of these quantities in what follows, and similarly $\bar{R}_t$ to represent either quantity in Eq.~\eqref{eq:avg_reward_return}.
+
+Due to the lack of a clear reward signal, network weights are only adjusted during the BCI training session epoch. 
+We assume that learning is context-dependent and any changes induced in the network during \textsc{pre-session} and photostimulation period are negligible. 
+
+To avoid transient RPE signals at the start of the BCI task, we initialize $\bar{r}_t$ to be an estimate of the network's initial reward rate at the start of the first session.
+For later sessions, any baseline reward rate is directly transferred from one BCI training session to the next.
+That is, we assume the baseline reward rates are not updated during the \textsc{pre-session}, \textsc{photostimulation}, or assumed over-night periods.
+
+\paragraph{Credit assignment and eligibility trace}
+
+Above, we defined the eligibility trace represent how much a given weight should change, weighted by the RPE signal.
+Throughout this work, to compensate for the potential temporal delays activity can have on reward, we take a weight's eligibility trace to represent some running average of the \emph{instantaneous eligibility trace}, $E_{ij,t}$, 
+\begin{align}
+    \label{eq:elig_acc}
+    \bar{E}_{ij, t} &= \left(1-\frac{\Delta t}{\tau_\text{elig}}\right) \bar{E}_{ij, t-1} + \frac{\Delta t}{\tau_\text{elig}} E_{ij, t}\,, 
+\end{align}
+where $\tau_\text{elig}$ is the timescale of the eligibility trace.
+
+Notably, each synapse/weight's activity-history is encompassed in its eligibility trace which is \emph{a single scalar quantity}.
+This form of eligibility is common practice in RL settings but, notably, distinguishes itself from algorithms like backpropagation through time (BPTT), which require one keep track of each neuron's activity history between weight updates.
+Unlike BPTT, the eligibility is \emph{not} reset when weight updates occur.
+The learning rule better resembles online real-time recurrent learning (RTRL), without the assumptions of non-local information and feedback weight symmetry \cite{murray2019local}.
+We note that this formulation of time-averaged eligibility trace for a 3-factor rule is by no means novel in the neuroscience modeling literature. 
+The accumulation timescale is sometimes set equal to a neuron's membrane time constant, i.e. $\tau_\text{elig} = \tau$, because it can be derived via a truncation of exact gradients to only spatially local terms (see, e.g., Ref.~\cite{portes2022distinguishing}) or is accumulated until reward is received and then reset (see, e.g., Ref.~\cite{miconi2017biologically}).
+In this work, we take $\tau_\text{elig}$ to be hundreds of milliseconds to account for experimental delays between activity and reward, whereas $\tau$ is comparatively shorter to allow for more rapid activity changes.  
+
+A fundamental assumption we make throughout this work is that the instantaneous eligibility traces is guided by gradient descent of some loss function at a given time, $\tilde{L}_t$.\footnote{We use $L_t$ to denote an RPE-weighted loss and $\tilde{L}_t$ to denote losses that do not directly depend on reward/RPE.
+Throughout this work, we assume the two are related via $L_t = R_t \tilde{L}_t$.}
+That is,
+\begin{align}
+    E_{ij,t} \propto \frac{d\tilde{L}_t}{dW_{ij}}\,,
+\end{align}
+where $\tilde{L}_t$ is some loss function and the constant of proportionality can be absorbed into $\eta$ in the expressions above.
+In this work, we take the loss to be 
+\begin{align}
+    \tilde{L}_t &= -\frac{1}{2}\sum_{i=1}^n c_i \left(h_{i,t} - \bar{h}_{i,t}\right)^2\,,
+\end{align}
+which represents a sum over neuronal deviations from their baseline values, $\bar{h}_{i,t}$. 
+Like reward, for simplicity the baselines are assumed to be running averages of recent activity,
+\begin{align}
+    \bar{h}_{i,t} = \left(1-\frac{\Delta t}{\tau_\text{bl}}\right) \bar{h}_{i,t-1} + \frac{\Delta t}{\tau_\text{bl}} h_{i,t}\,.
+\end{align}
+We can compute $d\tilde{L}_t / dW_{ij}$ to given an exact expression for this gradient, but, in general, this expression depends on both weights and activity that are spatially and temporally separated from the synapse and time in question, see Eq.~\eqref{eq:our_lr_exact} for the explicit expression below.
+To obtain a biologically realistic learning rule, we keep only the spatial and temporally local terms, giving our 3-factor eligibility expression
+\begin{align}
+    \label{eq:methods_3factor}
+    E_{ij,t} = \left(h_{i,t} - \bar{h}_{i,t} \right)\phi^\prime\left(\tilde{h}_{i,t}\right) h_{j,t-1}\,.
+\end{align}
+Together, Eqs.~\eqref{eq:methods_weight_adjust}, \eqref{eq:elig_acc}, and \eqref{eq:methods_3factor} fully define weight updates under our learning rule.
+
+\paragraph{Derivation of our learning rule from gradients}
+
+We note this is common in ANN learning setups, where we use the gradient (or some approximation thereof) of a weight with respect to some loss function to adjust its size.
+However, there are many 3-factor learning rules that do not have a direct loss descent/ascent interpretation, for example, a Hebbian learning rule, $\Delta W_{ij,t} = \eta h_{i,t} h_{i,t-1}$ is not often framed as the decrease of some loss function.
+Although gradient descent via loss some loss function is perhaps most well-known in SL setups, it can also be a method of adjusting weights in a RL setting, for example in computing policy gradients, is to construct a loss by weighting some function of the network's output activity with some function of the reward.
+Then, for positive (negative) reward, weights are adjusted such that the output activity is larger (smaller).
+
+Specifically, we assume that the loss function that leads to our eligibility trace is a sum of the postsynaptic neuron deviations\footnote{The choice of $F\left(\mathbf{h}_t - \bar{\mathbf{h}}_t\right) = \sum_{i=1}^n \left(h_{i,t} - \bar{h}_{i,t}\right)^2$ is somewhat arbitrary. 
+Many results would continue to hold so long as $F\left(\mathbf{h}_t - \bar{\mathbf{h}}_t\right) = F\left(\left\Vert\mathbf{h}_t - \bar{\mathbf{h}}_t\right\Vert_2^2\right)$.
+}
+\begin{align}
+    \tilde{L}_t &=  -\frac{1}{2}\sum_{i=1}^n c_i \left(h_{i,t} - \bar{h}_{i,t}\right)^2\,.
+\end{align}
+Here, $c_i$ are individual neuron weights (see below for interpretations of this quantity) and $\bar{h}_{i,t}$ some measure of the baseline activity of all hidden layer neurons.
+
+This loss will often be weighted by the RPE, for example in the case that $\tau_{elig} = \Delta t$, we could derive the full weight update from
+\begin{align}
+    L_t = R_t \tilde{L}_t = -\frac{1}{2} R_t \sum_{i=1}^n c_i \left(h_{i,t} - \bar{h}_{i,t}\right)^2\,.
+\end{align}
+Thus, for positive RPE, $R_t > 0$, this loss incentivizes the network to grow deviations. 
+For negative RPE, $R_t < 0$, the network shrinks its deviations.
+
+To compute $d\tilde{L}_t / dW_{ij}$ and thus $E_{ij,t}$ we will assume that derivative do not propagate through the baseline activity, $\bar{h}_{i,t}$, terms.
+Then, we have
+\begin{align}
+    \frac{d \tilde{L}_t}{d W_{ij}} = E_{ij,t} = - \sum_{k=1}^n c_k \left(h_{k,t} - \bar{h}_{k,t}\right) \phi^\prime\left(\tilde{h}_{k,t}\right) P_{kij,t}\,, 
+    \label{eq:our_lr_exact}
+\end{align}
+where we have defined the recurssive 3-tensor
+\begin{align}
+    P_{kij,t}  \equiv \frac{d\tilde{h}_{k,t}}{dW_{ij}} &= \alpha P_{kij,t-1} + \left(1-\alpha\right)\left[ \delta_{ik}h_{j,t-1}+\sum_{\ell=1}^n W_{k\ell} \phi^\prime\left(\tilde{h}_{\ell,t-1}\right) P_{\ell ij,t-1}\right]\,, \label{eq:P_kij,t}
+\end{align}
+with $P_{kij,0} = 0$.
+Intuitively, the three terms in this sum from left to right represent: (1) the leaky term contribution, (2) the direct recurrent contribution from the neuron $j$'s previous hidden activity, and (3) indirect recurrent contributions to all neurons' recent hidden activities from hidden activities even further in the past.
+
+Thus the eligibility trace can, in general, depend on every weight in the network and earlier activity. 
+This learning is often considered ``non-local'' and are often dropped when considering biologically-realistic learning as this would require each synapse in the network to have knowledge of the value of every other weight at all time steps within the network.
+The second term in this expression is positive definite, whereas the third terms can either be positive or negative due to explicit dependence on $\mathbf{W}$ elements.
+\todo{It would be nice to know the relative size of these terms in practice. Why does the first term not leads to a runaway of activity like it does in the 3-factor case below? Is it because the non-local terms dominate this weight adjustment?}
+
+Keeping only terms that represent information local to the synapse, the instantaneous eligibility trace is given by \eqref{eq:methods_3factor}
+
+\paragraph{Eligibility accumulation}
+
+In RL settings, a common way of keeping track of a parameter's influence on delayed rewards is to use eligibility traces.
+Specifically, we assume the eligibility trace is accumulated over time via Eq.~\eqref{eq:elig_acc}.
+Then, the weight change at a given time step is given by Eq.~\eqref{eq:methods_weight_adjust}.
+% or, explicitly for the 3-factor case,
+% \begin{align}
+%     \frac{d \bar{L}_t}{d W_{ij}} &= -\left[\sum_{s=0}^{S-1} \left(R_{t-s} - \bar{R}_{t-s} \right)\right] \left[c_i\sum_{s=0}^{S-1}\ \left(h_{i,t-s} - \bar{h}_{i,t-s}\right)\phi^\prime\left(\tilde{h}_{i,t-s}\right)h_{j,t-s-1}\right]\,,
+% \end{align}
+Hence, eligibility trace is individually accumulated over some amount of time determined by $\tau_\text{elig}$ and then weighted by the current reward.
+
+Note since our 3-factor learning rule is entirely dependent on the activity at a given time step, an eligibility trace is necessary if reward is in any way delayed relative to present actions. 
+This contrasts non-local learning rules like backpropgation, that are able to trace gradients through time to determine their influence on later time steps. 
+Also note we assume that eligibility accumulation does not get wiped when we do a weight update, meaning activity prior to a weight update can influence subsequent weight updates (though its affect is often small).
+This again is dissimilar to typical backpropagation setups, where gradients are computed for a fixed set of weights, their values used to update weights, and all dependence on previous activity/weights is wiped. 
+
+Note that the longer the time integration, the harder it is to identify correlations between the CN and the RPE signal.
+This is of course relative to the task length.
+\todo{Might be interesting experiment to delay the lickspout response relative to CN signal, and see when learning is no longer possible. 
+Could give an idea of how long signals are integrated.}
+
+There are several time scales that need to be kept track of in this setup and their relative values can strongly influence the behavior of the network
+\begin{enumerate}
+    \item Membrane time constant, $\tau$, that determines how much a neuron's activity is related to the previous time step. 
+    Determines the time scale of activity changes of the neuron.
+    \item The time scale of baseline activation accumulation, $\tau_\text{bl}$.
+    In effect, separates time scale of what is considered a perturbation versus what is considered non-perturbed activity in order to estimate the noise at a given time step.
+    Also determines time scale of when eligibility perturbation/relaxation will wash each other out.
+    If $\tau_\text{bl} < \tau_\text{elig}$, then effectively shortens eligibility trace, unless there is some imbalance of deviations like in our setup/Miconi's. 
+    \item Time scale of eligibility accumulation, $\tau_\text{elig}$. 
+    Determines how far back a given neuronal activity might contribute to reward.
+    Should at least be on order of $1$ second from experiments.
+    \item Time scale of baseline reward $\tau_\text{rew}$. 
+    This also separates what is considered a perturbation versus non-perturbed activity, with $\mathbf{R}_t$ estimating the non-perturbed reward at a given time.
+    If a running average, suffers from same effects as baseline activity if $\tau_\text{rew} < \tau_\text{elig}$. 
+    Might not even be something that decays, could be something like the max over the recent memory.
+\end{enumerate}
+
+Often in learning, including in the current experimental setup, explicit rewards are sparse and thus the animal may not have access to a reward signal that is updated every $50$ ms.
+To represent the slowness of the reward signal, we vary the rate at which potential reward signals are given to the mouse. 
+
+
+\end{document}

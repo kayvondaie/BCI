@@ -1,0 +1,26 @@
+# ── Data & caches → live in Code Ocean data assets, never in git ──
+meta_analysis_results/
+**/meta_analysis_results/
+results/
+**/results/
+*.npy
+*.npz
+*.mat
+*.pkl
+*.h5
+*.hdf5
+*.tif
+*.tiff
+
+# ── Regenerable figure outputs ──
+*.png
+*.svg
+*.pdf
+
+# ── Editor / session / build junk ──
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+*.tmp.*
+*.DS_Store

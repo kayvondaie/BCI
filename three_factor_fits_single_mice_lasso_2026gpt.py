@@ -573,7 +573,7 @@ Y_test_z  = (Y_test  - mu) / sigma
 # ----------------------------
 # FAST model (fixed alpha) on BASE columns only
 # ----------------------------
-alpha_fast = 10**(-3.3)
+alpha_fast = 10**(-3)
 
 model = Pipeline([
     ('scaler', StandardScaler()),
